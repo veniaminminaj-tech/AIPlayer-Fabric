@@ -16,7 +16,8 @@ public final class AIPlayerMod implements ModInitializer {
         AIPlayerConfig.load();
         FabricDefaultAttributeRegistry.register(AIPlayerEntities.AI_PLAYER, AIPlayerEntity.createAttributes());
         AIPlayerCommands.register();
+        AIPlayerAutoSpawn.register();
         AIPlayerChat.register();
-        LOGGER.info("AIPlayer initialized. Use /spawnai and press P for settings.");
+        LOGGER.info("AIPlayer initialized. Companions spawn automatically in every game mode; press P for settings.");
     }
 }
