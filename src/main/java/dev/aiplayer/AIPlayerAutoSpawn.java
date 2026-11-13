@@ -11,6 +11,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 
 public final class AIPlayerAutoSpawn {
+    private static final String PLAYER_MARKER = "aiplayer_companion_created";
     private AIPlayerAutoSpawn() {}
 
     public static void register() {
@@ -20,9 +21,15 @@ public final class AIPlayerAutoSpawn {
 
     private static void spawnForPlayer(MinecraftServer server, ServerPlayer player) {
         String ownerTag = "aiplayer_owner_" + player.getUUID().toString().replace("-", "");
-        for (ServerLevel level : server.getAllLevels()) {
-            for (Entity entity : level.getAllEntities()) {
-                if (entity instanceof AIPlayerEntity && entity.getTags().contains(ownerTag)) return;
+        if (player.getTags().contains(PLAYER_MARKER)) return;
+
+        // Migrate worlds where a companion already exists but the player marker was not yet saved.
+        for (ServerLevel existingLevel : server.getAllLevels()) {
+            for (Entity entity : existingLevel.getAllEntities()) {
+                if (entity instanceof AIPlayerEntity && entity.getTags().contains(ownerTag)) {
+                    player.addTag(PLAYER_MARKER);
+                    return;
+                }
             }
         }
 
@@ -44,6 +51,7 @@ public final class AIPlayerAutoSpawn {
         companion.setXRot(0.0F);
 
         if (level.addFreshEntity(companion)) {
+            player.addTag(PLAYER_MARKER);
             player.sendSystemMessage(Component.literal(name + " joined your world as your AI companion."));
             AIPlayerMod.LOGGER.info("Automatically spawned AI companion for {} in game mode {}",
                     player.getName().getString(), player.gameMode.getGameModeForPlayer());
