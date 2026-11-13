@@ -38,7 +38,7 @@ public final class AIPlayerChat {
                     + sender.blockPosition().getY() + ", " + sender.blockPosition().getZ()
                     + ". Health: " + Math.round(sender.getHealth()) + "/" + Math.round(sender.getMaxHealth())
                     + ". Nearby companion: " + bot.getName().getString() + ".";
-            String playerText = message.getContent().getString();
+            String playerText = message.getContent();
 
             Deque<String> history = MEMORY.computeIfAbsent(sender.getUUID(), ignored -> new ArrayDeque<>());
             String prompt;
