@@ -102,12 +102,12 @@ public final class AIPlayerEntity extends PathfinderMob {
 
         @Override
         public boolean canUse() {
-            if (mob.level().isClientSide) return false;
+            if (mob.level().isClientSide()) return false;
             target = mob.level().getEntitiesOfClass(
                             ItemEntity.class,
                             mob.getBoundingBox().inflate(ITEM_SEARCH_RADIUS),
                             item -> !item.isRemoved()
-                                    && !item.cannotPickup()
+                                    && !item.hasPickUpDelay()
                                     && !item.getItem().isEmpty()
                                     && mob.inventory.canAddItem(item.getItem()))
                     .stream()
@@ -120,7 +120,7 @@ public final class AIPlayerEntity extends PathfinderMob {
         public boolean canContinueToUse() {
             return target != null
                     && target.isAlive()
-                    && !target.cannotPickup()
+                    && !target.hasPickUpDelay()
                     && mob.distanceToSqr(target) <= ITEM_SEARCH_RADIUS * ITEM_SEARCH_RADIUS
                     && mob.inventory.canAddItem(target.getItem());
         }
