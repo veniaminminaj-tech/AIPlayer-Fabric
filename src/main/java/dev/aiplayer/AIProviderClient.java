@@ -23,8 +23,18 @@ public final class AIProviderClient {
         String endpoint = config.endpoint == null ? "" : config.endpoint.trim();
         if (endpoint.isEmpty()) return CompletableFuture.failedFuture(
                 new IllegalStateException("Provider endpoint is empty."));
-        if (!endpoint.startsWith("https://") && !endpoint.startsWith("http://")) {
-            return CompletableFuture.failedFuture(new IllegalArgumentException("Endpoint must start with http:// or https://"));
+        URI endpointUri;
+        try {
+            endpointUri = URI.create(endpoint);
+        } catch (IllegalArgumentException e) {
+            return CompletableFuture.failedFuture(new IllegalArgumentException("Invalid provider endpoint URL.", e));
+        }
+        String scheme = endpointUri.getScheme() == null ? "" : endpointUri.getScheme().toLowerCase(java.util.Locale.ROOT);
+        String host = endpointUri.getHost() == null ? "" : endpointUri.getHost().toLowerCase(java.util.Locale.ROOT);
+        boolean localHost = host.equals("localhost") || host.equals("127.0.0.1") || host.equals("::1");
+        if (!scheme.equals("https") && !(scheme.equals("http") && localHost)) {
+            return CompletableFuture.failedFuture(new IllegalArgumentException(
+                    "Use HTTPS for remote providers. HTTP is allowed only for localhost Ollama."));
         }
         if (config.model == null || config.model.isBlank()) {
             return CompletableFuture.failedFuture(new IllegalStateException("Model ID is empty."));
@@ -45,6 +55,7 @@ public final class AIProviderClient {
         messages.add(user);
         root.add("messages", messages);
         root.addProperty("temperature", 0.7);
+        root.addProperty("max_tokens", 180);
 
         HttpRequest.Builder builder;
         try {
