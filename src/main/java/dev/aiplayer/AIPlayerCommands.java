@@ -1,6 +1,7 @@
 package dev.aiplayer;
 
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import dev.aiplayer.entity.AIPlayerEntities;
 import dev.aiplayer.entity.AIPlayerEntity;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
@@ -21,19 +22,32 @@ public final class AIPlayerCommands {
     private static void registerCommands(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("spawnai")
                 .requires(source -> source.hasPermission(2))
+                .executes(context -> spawn(context.getSource(), AIPlayerConfig.get().botName))
+                .then(Commands.argument("name", StringArgumentType.word())
+                        .executes(context -> spawn(context.getSource(),
+                                StringArgumentType.getString(context, "name")))));
+        dispatcher.register(Commands.literal("aiclear")
                 .executes(context -> {
-                    CommandSourceStack source = context.getSource();
-                    ServerLevel level = source.getLevel();
-                    Vec3 pos = source.getPosition();
-                    AIPlayerEntity bot = AIPlayerEntities.AI_PLAYER.create(level);
-                    if (bot == null) {
-                        source.sendFailure(Component.literal("Could not create AI player."));
-                        return 0;
-                    }
-                    bot.moveTo(pos.x, pos.y, pos.z, source.getRotation().y, 0.0F);
-                    level.addFreshEntity(bot);
-                    source.sendSuccess(() -> Component.literal("AI Player spawned."), false);
+                    AIPlayerChat.clearMemory(context.getSource().getPlayerOrException().getUUID());
+                    context.getSource().sendSuccess(() -> Component.literal("Your AI companion conversation memory was cleared."), false);
                     return 1;
                 }));
+    }
+
+    private static int spawn(CommandSourceStack source, String name) {
+        ServerLevel level = source.getLevel();
+        Vec3 pos = source.getPosition();
+        AIPlayerEntity bot = AIPlayerEntities.AI_PLAYER.create(level);
+        if (bot == null) {
+            source.sendFailure(Component.literal("Could not create AI player."));
+            return 0;
+        }
+        String safeName = name == null || name.isBlank() ? "AI Player" : name.substring(0, Math.min(32, name.length()));
+        bot.setCustomName(Component.literal(safeName));
+        bot.setCustomNameVisible(true);
+        bot.moveTo(pos.x, pos.y, pos.z, source.getRotation().y, 0.0F);
+        level.addFreshEntity(bot);
+        source.sendSuccess(() -> Component.literal("Spawned AI companion: " + safeName), false);
+        return 1;
     }
 }
