@@ -9,6 +9,7 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.phys.Vec3;
 
 public final class AIPlayerCommands {
@@ -21,7 +22,6 @@ public final class AIPlayerCommands {
 
     private static void registerCommands(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("spawnai")
-                .requires(source -> source.hasPermission(2))
                 .executes(context -> spawn(context.getSource(), AIPlayerConfig.get().botName))
                 .then(Commands.argument("name", StringArgumentType.word())
                         .executes(context -> spawn(context.getSource(),
@@ -37,7 +37,7 @@ public final class AIPlayerCommands {
     private static int spawn(CommandSourceStack source, String name) {
         ServerLevel level = source.getLevel();
         Vec3 pos = source.getPosition();
-        AIPlayerEntity bot = AIPlayerEntities.AI_PLAYER.create(level);
+        AIPlayerEntity bot = AIPlayerEntities.AI_PLAYER.create(level, EntitySpawnReason.COMMAND);
         if (bot == null) {
             source.sendFailure(Component.literal("Could not create AI player."));
             return 0;
@@ -45,7 +45,9 @@ public final class AIPlayerCommands {
         String safeName = name == null || name.isBlank() ? "AI Player" : name.substring(0, Math.min(32, name.length()));
         bot.setCustomName(Component.literal(safeName));
         bot.setCustomNameVisible(true);
-        bot.moveTo(pos.x, pos.y, pos.z, source.getRotation().y, 0.0F);
+        bot.setPos(pos.x, pos.y, pos.z);
+        bot.setYRot(source.getRotation().y);
+        bot.setXRot(0.0F);
         level.addFreshEntity(bot);
         source.sendSuccess(() -> Component.literal("Spawned AI companion: " + safeName), false);
         return 1;
