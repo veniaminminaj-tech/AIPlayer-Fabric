@@ -20,7 +20,7 @@ public final class AIPlayerAutoSpawn {
     }
 
     private static void spawnForPlayer(MinecraftServer server, ServerPlayer player) {
-        String ownerTag = "aiplayer_owner_" + player.getUUID().toString().replace("-", "");
+        String ownerTag = "aiplayer_owner_" + player.getUUID().toString();
         if (player.getTags().contains(PLAYER_MARKER)) return;
 
         // Migrate worlds where a companion already exists but the player marker was not yet saved.
