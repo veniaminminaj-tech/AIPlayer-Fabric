@@ -9,7 +9,7 @@ A configurable AI companion mod for **Minecraft Java 1.21.11**, built with **Fab
 - Test the provider connection from the settings screen.
 - Choose the built-in Steve or Alex appearance.
 - Run `/spawnai` or `/spawnai <name>` (operator permission level 2) to spawn a companion.
-- The companion follows its nearby player, wanders when idle, and looks at nearby players.
+- Hardcore survival AI: the companion panics after taking damage, avoids hostile monsters, follows its player, and wanders only when safe. It has normal player-like health and is persistent.
 - When a player chats within 32 blocks of a companion, the mod sends that message and a small game context (dimension, position, health) to the configured AI provider.
 - Conversation memory is kept per player in server memory, bounded by the configured number of recent messages. Use `/aiclear` to clear your conversation memory.
 - Provider HTTP calls run asynchronously so the game server thread is not blocked.
