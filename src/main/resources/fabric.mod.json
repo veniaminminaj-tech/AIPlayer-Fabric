@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "aiplayer",
+  "version": "${version}",
+  "name": "AI Player",
+  "description": "AI provider settings for Fabric Minecraft.",
+  "authors": ["veniaminminaj-tech"],
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["dev.aiplayer.AIPlayerMod"],
+    "client": ["dev.aiplayer.client.AIPlayerClient"]
+  },
+  "depends": {
+    "fabricloader": ">=0.18.1",
+    "minecraft": "~1.21.11",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
