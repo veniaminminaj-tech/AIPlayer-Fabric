@@ -1,6 +1,7 @@
 package dev.aiplayer.client;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import dev.aiplayer.AIPlayerConfig;
 import dev.aiplayer.AIPlayerMod;
 import dev.aiplayer.entity.AIPlayerEntities;
 import net.fabricmc.api.ClientModInitializer;
@@ -17,12 +18,13 @@ public final class AIPlayerClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
+        AIPlayerConfig.ensurePlayerFolder();
         KeyMapping.Category category = KeyMapping.Category.register(
                 Identifier.fromNamespaceAndPath(AIPlayerMod.MOD_ID, "general"));
         openSettings = KeyBindingHelper.registerKeyBinding(new KeyMapping(
                 "key.aiplayer.open_settings",
                 InputConstants.Type.KEYSYM,
-                InputConstants.KEY_P,
+                InputConstants.KEY_M,
                 category
         ));
 
