@@ -21,15 +21,20 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - name: Set up Gradle
+          cache: gradle
+      - name: Set up Gradle 9.2.1
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.2.1'
-      - name: Build mod
-        run: gradle build --no-daemon
-      - name: Upload JAR
+      - name: Verify Java and Gradle
+        run: |
+          java -version
+          gradle --version
+      - name: Compile and package
+        run: gradle clean build --no-daemon --stacktrace
+      - name: Upload mod JAR
         uses: actions/upload-artifact@v4
         with:
-          name: AIPlayer-Fabric-${{ github.sha }}
-          path: build/libs/*.jar
+          name: AIPlayer-Fabric-1.21.11
+          path: build/libs/aiplayer-*.jar
           if-no-files-found: error
