@@ -55,9 +55,10 @@ public final class AIPlayerEntity extends PathfinderMob {
         if (!MODE_FOLLOW.equals(mode) && !MODE_WANDER.equals(mode) && !MODE_STAY.equals(mode)) {
             throw new IllegalArgumentException("Unsupported AI Player mode: " + mode);
         }
-        for (String tag : getTags()) {
-            if (tag.startsWith(MODE_TAG_PREFIX)) removeTag(tag);
-        }
+        getTags().stream()
+                .filter(tag -> tag.startsWith(MODE_TAG_PREFIX))
+                .toList()
+                .forEach(this::removeTag);
         addTag(MODE_TAG_PREFIX + mode);
         getNavigation().stop();
     }
