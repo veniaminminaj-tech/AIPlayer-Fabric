@@ -27,7 +27,6 @@ public final class AIPlayerEntity extends PathfinderMob {
     private static final String OWNER_TAG_PREFIX = "aiplayer_owner_";
     private static final double FOLLOW_START_DISTANCE_SQUARED = 12.25;
     private static final double FOLLOW_STOP_DISTANCE_SQUARED = 6.25;
-    private static final double FOLLOW_MAX_DISTANCE_SQUARED = 4096.0;
 
     public AIPlayerEntity(EntityType<? extends PathfinderMob> type, Level level) {
         super(type, level);
@@ -85,8 +84,7 @@ public final class AIPlayerEntity extends PathfinderMob {
         public boolean canContinueToUse() {
             return owner != null && owner.isAlive()
                     && owner.level() == mob.level()
-                    && mob.distanceToSqr(owner) > FOLLOW_STOP_DISTANCE_SQUARED
-                    && mob.distanceToSqr(owner) < FOLLOW_MAX_DISTANCE_SQUARED;
+                    && mob.distanceToSqr(owner) > FOLLOW_STOP_DISTANCE_SQUARED;
         }
 
         @Override
