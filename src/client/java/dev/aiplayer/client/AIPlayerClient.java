@@ -10,7 +10,7 @@ import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.entity.EntityRenderers;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 public final class AIPlayerClient implements ClientModInitializer {
     private static KeyMapping openSettings;
@@ -18,7 +18,7 @@ public final class AIPlayerClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         KeyMapping.Category category = KeyMapping.Category.register(
-                ResourceLocation.fromNamespaceAndPath(AIPlayerMod.MOD_ID, "general"));
+                Identifier.fromNamespaceAndPath(AIPlayerMod.MOD_ID, "general"));
         openSettings = KeyBindingHelper.registerKeyBinding(new KeyMapping(
                 "key.aiplayer.open_settings",
                 InputConstants.Type.KEYSYM,
