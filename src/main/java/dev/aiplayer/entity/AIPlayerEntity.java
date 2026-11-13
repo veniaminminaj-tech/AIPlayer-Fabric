@@ -3,7 +3,6 @@ package dev.aiplayer.entity;
 import dev.aiplayer.AIPlayerConfig;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.Mob;
@@ -93,7 +92,7 @@ public final class AIPlayerEntity extends PathfinderMob {
                 try {
                     UUID ownerId = UUID.fromString(tag.substring(OWNER_TAG_PREFIX.length()));
                     if (mob.level() instanceof ServerLevel serverLevel) {
-                        ServerPlayer owner = serverLevel.getPlayerByUUID(ownerId);
+                        Player owner = serverLevel.getPlayerByUUID(ownerId);
                         if (owner != null) return owner;
                     }
                 } catch (IllegalArgumentException ignored) {
