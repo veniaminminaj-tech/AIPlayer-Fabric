@@ -16,6 +16,7 @@ public final class AIPlayerConfig {
     public String apiKey = "";
     public String endpoint = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
     public String skin = "steve";
+    public String botName = "AI Player";
 
     private static AIPlayerConfig INSTANCE = new AIPlayerConfig();
 
