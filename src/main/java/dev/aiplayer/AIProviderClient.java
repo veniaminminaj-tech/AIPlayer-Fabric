@@ -30,14 +30,18 @@ public final class AIProviderClient {
             return CompletableFuture.failedFuture(new IllegalArgumentException("Invalid provider endpoint URL.", e));
         }
         String scheme = endpointUri.getScheme() == null ? "" : endpointUri.getScheme().toLowerCase(java.util.Locale.ROOT);
-        String host = endpointUri.getHost() == null ? "" : endpointUri.getHost().toLowerCase(java.util.Locale.ROOT);
-        boolean localHost = host.equals("localhost") || host.equals("127.0.0.1") || host.equals("::1");
-        if (!scheme.equals("https") && !(scheme.equals("http") && localHost)) {
+        if (!scheme.equals("https")) {
             return CompletableFuture.failedFuture(new IllegalArgumentException(
-                    "Use HTTPS for remote providers. HTTP is allowed only for localhost Ollama."));
+                    "AI Player accepts HTTPS provider endpoints only. Localhost HTTP endpoints are disabled."));
         }
         if (config.model == null || config.model.isBlank()) {
             return CompletableFuture.failedFuture(new IllegalStateException("Model ID is empty."));
+        }
+
+        String apiKey = AIPlayerConfig.readApiKey();
+        if (apiKey.isBlank()) {
+            return CompletableFuture.failedFuture(new IllegalStateException(
+                    "Add your API key to .minecraft/ai-playerv/api-key.txt."));
         }
 
         JsonObject root = new JsonObject();
@@ -59,17 +63,17 @@ public final class AIProviderClient {
 
         HttpRequest.Builder builder;
         try {
-            builder = HttpRequest.newBuilder(URI.create(endpoint))
+            builder = HttpRequest.newBuilder(endpointUri)
                     .timeout(Duration.ofSeconds(60))
                     .header("Content-Type", "application/json")
+                    .header("Authorization", "Bearer " + apiKey)
                     .POST(HttpRequest.BodyPublishers.ofString(root.toString()));
+            if ("OpenRouter".equalsIgnoreCase(config.provider)) {
+                builder.header("HTTP-Referer", "https://github.com/veniaminminaj-tech/AIPlayer-Fabric");
+                builder.header("X-Title", "AI Player Fabric");
+            }
         } catch (IllegalArgumentException e) {
             return CompletableFuture.failedFuture(new IllegalArgumentException("Invalid provider endpoint URL.", e));
-        }
-
-        String provider = config.provider == null ? "" : config.provider;
-        if (!provider.equals("Ollama") && config.apiKey != null && !config.apiKey.isBlank()) {
-            builder.header("Authorization", "Bearer " + config.apiKey.trim());
         }
 
         return HTTP.sendAsync(builder.build(), HttpResponse.BodyHandlers.ofString())
