@@ -3,6 +3,7 @@ package dev.aiplayer.entity;
 import dev.aiplayer.AIPlayerConfig;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.Mob;
@@ -15,17 +16,27 @@ import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
 import net.minecraft.world.entity.ai.goal.PanicGoal;
 import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal;
 import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 
 import java.util.EnumSet;
+import java.util.Comparator;
 import java.util.UUID;
 
 public final class AIPlayerEntity extends PathfinderMob {
     private static final String OWNER_TAG_PREFIX = "aiplayer_owner_";
     private static final double FOLLOW_START_DISTANCE_SQUARED = 12.25;
     private static final double FOLLOW_STOP_DISTANCE_SQUARED = 6.25;
+    private static final double ITEM_SEARCH_RADIUS = 10.0;
+    private static final double ITEM_PICKUP_DISTANCE_SQUARED = 2.25;
+
+    // A player-sized inventory: 27 main slots. Hotbar/equipment UI will be added later.
+    private final SimpleContainer inventory = new SimpleContainer(27);
 
     public AIPlayerEntity(EntityType<? extends PathfinderMob> type, Level level) {
         super(type, level);
@@ -36,6 +47,10 @@ public final class AIPlayerEntity extends PathfinderMob {
 
     public static String ownerTag(UUID ownerId) {
         return OWNER_TAG_PREFIX + ownerId;
+    }
+
+    public SimpleContainer getInventory() {
+        return inventory;
     }
 
     public static AttributeSupplier.Builder createAttributes() {
@@ -51,10 +66,98 @@ public final class AIPlayerEntity extends PathfinderMob {
         goalSelector.addGoal(0, new FloatGoal(this));
         goalSelector.addGoal(1, new PanicGoal(this, 1.45));
         goalSelector.addGoal(2, new AvoidEntityGoal<>(this, Monster.class, 10.0F, 1.15, 1.45));
-        goalSelector.addGoal(3, new FollowOwnerGoal(this, 1.15));
-        goalSelector.addGoal(4, new WaterAvoidingRandomStrollGoal(this, 1.0));
-        goalSelector.addGoal(5, new LookAtPlayerGoal(this, Player.class, 8.0F));
-        goalSelector.addGoal(6, new RandomLookAroundGoal(this));
+        goalSelector.addGoal(3, new CollectItemsGoal(this, 1.05));
+        goalSelector.addGoal(4, new FollowOwnerGoal(this, 1.15));
+        goalSelector.addGoal(5, new WaterAvoidingRandomStrollGoal(this, 1.0));
+        goalSelector.addGoal(6, new LookAtPlayerGoal(this, Player.class, 8.0F));
+        goalSelector.addGoal(7, new RandomLookAroundGoal(this));
+    }
+
+    @Override
+    protected void addAdditionalSaveData(ValueOutput output) {
+        super.addAdditionalSaveData(output);
+        inventory.storeAsItemList(output.list("Inventory", ItemStack.CODEC));
+    }
+
+    @Override
+    protected void readAdditionalSaveData(ValueInput input) {
+        super.readAdditionalSaveData(input);
+        inventory.fromItemList(input.listOrEmpty("Inventory", ItemStack.CODEC));
+    }
+
+    /**
+     * Collects nearby dropped items into the companion's own persistent inventory.
+     * It does not take items directly from the owner or other players.
+     */
+    private static final class CollectItemsGoal extends Goal {
+        private final AIPlayerEntity mob;
+        private final double speed;
+        private ItemEntity target;
+
+        private CollectItemsGoal(AIPlayerEntity mob, double speed) {
+            this.mob = mob;
+            this.speed = speed;
+            setFlags(EnumSet.of(Goal.Flag.MOVE));
+        }
+
+        @Override
+        public boolean canUse() {
+            if (mob.level().isClientSide || mob.inventory.isEmpty() && !hasRoomForAnyItems()) {
+                return false;
+            }
+            target = mob.level().getEntitiesOfClass(
+                            ItemEntity.class,
+                            mob.getBoundingBox().inflate(ITEM_SEARCH_RADIUS),
+                            item -> !item.isRemoved()
+                                    && !item.cannotPickup()
+                                    && !item.getItem().isEmpty()
+                                    && mob.inventory.canAddItem(item.getItem()))
+                    .stream()
+                    .min(Comparator.comparingDouble(mob::distanceToSqr))
+                    .orElse(null);
+            return target != null;
+        }
+
+        @Override
+        public boolean canContinueToUse() {
+            return target != null
+                    && target.isAlive()
+                    && !target.cannotPickup()
+                    && mob.distanceToSqr(target) <= ITEM_SEARCH_RADIUS * ITEM_SEARCH_RADIUS
+                    && mob.inventory.canAddItem(target.getItem());
+        }
+
+        @Override
+        public void tick() {
+            if (target == null) return;
+            if (mob.distanceToSqr(target) <= ITEM_PICKUP_DISTANCE_SQUARED) {
+                ItemStack remainder = mob.inventory.addItem(target.getItem().copy());
+                if (remainder.isEmpty()) {
+                    target.discard();
+                } else {
+                    target.setItem(remainder);
+                }
+                mob.getNavigation().stop();
+                target = null;
+                return;
+            }
+            if (mob.tickCount % 10 == 0) {
+                mob.getNavigation().moveTo(target, speed);
+            }
+        }
+
+        @Override
+        public void stop() {
+            mob.getNavigation().stop();
+            target = null;
+        }
+
+        private boolean hasRoomForAnyItems() {
+            for (int slot = 0; slot < mob.inventory.getContainerSize(); slot++) {
+                if (mob.inventory.getItem(slot).isEmpty()) return true;
+            }
+            return false;
+        }
     }
 
     /**
