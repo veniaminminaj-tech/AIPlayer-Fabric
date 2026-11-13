@@ -13,14 +13,13 @@ import net.minecraft.network.chat.Component;
 import java.util.List;
 
 public final class AISettingsScreen extends Screen {
-    private static final List<String> PROVIDERS = List.of("Gemini", "Ollama", "DeepSeek", "OpenAI");
+    private static final List<String> PROVIDERS = List.of("Gemini", "OpenRouter", "DeepSeek", "OpenAI");
     private int providerIndex;
     private EditBox modelBox;
     private EditBox endpointBox;
-    private EditBox keyBox;
     private EditBox nameBox;
     private EditBox personalityBox;
-    private String status = "Configure your AI companion.";
+    private String status = "API key: .minecraft/ai-playerv/api-key.txt";
     private int statusColor = 0xA0E0A0;
 
     public AISettingsScreen() {
@@ -34,7 +33,7 @@ public final class AISettingsScreen extends Screen {
 
         int center = this.width / 2;
         int left = center - 150;
-        int y = Math.max(38, this.height / 2 - 145);
+        int y = Math.max(38, this.height / 2 - 120);
 
         addRenderableWidget(Button.builder(providerLabel(), button -> {
             providerIndex = (providerIndex + 1) % PROVIDERS.size();
@@ -42,15 +41,13 @@ public final class AISettingsScreen extends Screen {
             String provider = PROVIDERS.get(providerIndex);
             modelBox.setValue(AIPlayerConfig.defaultModel(provider));
             endpointBox.setValue(AIPlayerConfig.defaultEndpoint(provider));
-            status = "Preset loaded. Enter your key if this provider requires one.";
+            status = "Provider preset changed. API key is read from ai-playerv/api-key.txt.";
         }).bounds(left, y, 300, 20).build());
 
         y += 25;
         modelBox = field(left, y, "Model ID", config.model, 128);
         y += 25;
-        endpointBox = field(left, y, "API endpoint URL", config.endpoint, 512);
-        y += 25;
-        keyBox = field(left, y, "API key (local config)", config.apiKey, 512);
+        endpointBox = field(left, y, "HTTPS API endpoint URL", config.endpoint, 512);
         y += 25;
         nameBox = field(left, y, "Companion name", config.botName, 32);
         y += 25;
@@ -63,13 +60,8 @@ public final class AISettingsScreen extends Screen {
                 .bounds(left + 155, y, 145, 20).build());
 
         y += 25;
-        addRenderableWidget(Button.builder(Component.literal("Skin: " + config.skin), button -> {
-            config.skin = "steve".equalsIgnoreCase(config.skin) ? "alex" : "steve";
-            button.setMessage(Component.literal("Skin: " + config.skin));
-            status = "Skin preference updated. Press Save settings.";
-        }).bounds(left, y, 145, 20).build());
         addRenderableWidget(Button.builder(Component.literal("Done"), button -> onClose())
-                .bounds(left + 155, y, 145, 20).build());
+                .bounds(left, y, 300, 20).build());
     }
 
     private EditBox field(int x, int y, String hint, String value, int maxLength) {
@@ -90,14 +82,13 @@ public final class AISettingsScreen extends Screen {
         config.provider = PROVIDERS.get(providerIndex);
         config.model = modelBox.getValue().trim();
         config.endpoint = endpointBox.getValue().trim();
-        config.apiKey = keyBox.getValue().trim();
         config.botName = nameBox.getValue().trim().isEmpty() ? "AI Player" : nameBox.getValue().trim();
         config.personality = personalityBox.getValue().trim().isEmpty()
                 ? "Friendly, curious, helpful, and knowledgeable about Minecraft."
                 : personalityBox.getValue().trim();
         try {
             AIPlayerConfig.save();
-            status = "Saved to config/aiplayer.json";
+            status = "Saved. API key: .minecraft/ai-playerv/api-key.txt";
             statusColor = 0x80E0A0;
         } catch (Exception e) {
             status = "Save failed: " + e.getMessage();
@@ -129,7 +120,7 @@ public final class AISettingsScreen extends Screen {
         super.render(graphics, mouseX, mouseY, delta);
         graphics.drawCenteredString(font, title, width / 2, 18, 0xFFFFFF);
         graphics.drawCenteredString(font, status, width / 2, height - 28, statusColor);
-        graphics.drawCenteredString(font, "P: open settings  |  /spawnai [name]  |  /aiclear", width / 2, height - 14, 0xAAAAAA);
+        graphics.drawCenteredString(font, "M: settings | Skin PNG: .minecraft/ai-playerv/skin.png", width / 2, height - 14, 0xAAAAAA);
     }
 
     @Override
