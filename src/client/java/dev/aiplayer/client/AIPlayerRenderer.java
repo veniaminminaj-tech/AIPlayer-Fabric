@@ -18,6 +18,11 @@ public final class AIPlayerRenderer extends HumanoidMobRenderer<AIPlayerEntity, 
     }
 
     @Override
+    public HumanoidRenderState createRenderState() {
+        return new HumanoidRenderState();
+    }
+
+    @Override
     public Identifier getTextureLocation(HumanoidRenderState state) {
         return "alex".equalsIgnoreCase(AIPlayerConfig.get().skin) ? ALEX : STEVE;
     }
