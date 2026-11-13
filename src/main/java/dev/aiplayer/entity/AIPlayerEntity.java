@@ -2,6 +2,7 @@ package dev.aiplayer.entity;
 
 import dev.aiplayer.AIPlayerConfig;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.Mob;
@@ -19,8 +20,11 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 
 import java.util.EnumSet;
+import java.util.UUID;
 
 public final class AIPlayerEntity extends PathfinderMob {
+    private static final String OWNER_TAG_PREFIX = "aiplayer_owner_";
+
     public AIPlayerEntity(EntityType<? extends PathfinderMob> type, Level level) {
         super(type, level);
         setCustomName(Component.literal(AIPlayerConfig.get().botName));
@@ -55,12 +59,12 @@ public final class AIPlayerEntity extends PathfinderMob {
         private FollowNearbyPlayerGoal(AIPlayerEntity mob, double speed) {
             this.mob = mob;
             this.speed = speed;
-            setFlags(EnumSet.of(Flag.MOVE));
+            setFlags(EnumSet.of(Goal.Flag.MOVE));
         }
 
         @Override
         public boolean canUse() {
-            target = mob.level().getNearestPlayer(mob, 16.0);
+            target = findTarget();
             return target != null && target.isAlive() && mob.distanceToSqr(target) > 6.25;
         }
 
@@ -80,6 +84,19 @@ public final class AIPlayerEntity extends PathfinderMob {
         public void stop() {
             mob.getNavigation().stop();
             target = null;
+        }
+
+        private Player findTarget() {
+            for (String tag : mob.getTags()) {
+                if (!tag.startsWith(OWNER_TAG_PREFIX)) continue;
+                try {
+                    UUID ownerId = UUID.fromString(tag.substring(OWNER_TAG_PREFIX.length()));
+                    if (mob.level().getPlayerByUUID(ownerId) instanceof ServerPlayer owner) return owner;
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore malformed ownership tags.
+                }
+            }
+            return mob.level().getNearestPlayer(mob, 16.0);
         }
     }
 }
