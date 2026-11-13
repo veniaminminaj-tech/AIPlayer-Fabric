@@ -39,23 +39,12 @@ public final class AIPlayerEntity extends PathfinderMob {
     @Override
     protected void registerGoals() {
         goalSelector.addGoal(0, new FloatGoal(this));
-        // Emergency reactions take priority over following or wandering.
         goalSelector.addGoal(1, new PanicGoal(this, 1.45));
         goalSelector.addGoal(2, new AvoidEntityGoal<>(this, Monster.class, 10.0F, 1.15, 1.45));
         goalSelector.addGoal(3, new FollowNearbyPlayerGoal(this, 1.12));
         goalSelector.addGoal(4, new WaterAvoidingRandomStrollGoal(this, 1.0));
         goalSelector.addGoal(5, new LookAtPlayerGoal(this, Player.class, 8.0F));
         goalSelector.addGoal(6, new RandomLookAroundGoal(this));
-    }
-
-    @Override
-    public boolean hurt(net.minecraft.world.damagesource.DamageSource source, float amount) {
-        boolean damaged = super.hurt(source, amount);
-        if (damaged && !level().isClientSide) {
-            // Stop any old path immediately so the panic goal can take over.
-            getNavigation().stop();
-        }
-        return damaged;
     }
 
     private static final class FollowNearbyPlayerGoal extends Goal {
