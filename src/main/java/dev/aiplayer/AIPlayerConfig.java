@@ -6,10 +6,11 @@ import com.google.gson.GsonBuilder;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import net.fabricmc.loader.api.FabricLoader;
 
 public final class AIPlayerConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final Path FILE = Path.of("config", "aiplayer.json");
+    private static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("aiplayer.json");
 
     public String provider = "Gemini";
     public String model = "gemini-2.5-flash";
