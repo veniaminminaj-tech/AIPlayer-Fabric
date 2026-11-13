@@ -54,7 +54,7 @@ public final class AIPlayerRenderer extends HumanoidMobRenderer<AIPlayerEntity, 
                 AIPlayerModLog.warn("Custom skin must be a 64x64 PNG: " + skinPath);
                 return null;
             }
-            DynamicTexture texture = new DynamicTexture("AI Player custom skin", image);
+            DynamicTexture texture = new DynamicTexture(() -> "AI Player custom skin", image);
             Minecraft.getInstance().getTextureManager().register(CUSTOM, texture);
             return CUSTOM;
         } catch (Exception e) {
