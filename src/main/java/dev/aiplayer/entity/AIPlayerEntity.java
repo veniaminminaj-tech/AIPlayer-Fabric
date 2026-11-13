@@ -3,7 +3,6 @@ package dev.aiplayer.entity;
 import dev.aiplayer.AIPlayerConfig;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.Mob;
@@ -65,7 +64,7 @@ public final class AIPlayerEntity extends PathfinderMob {
     private static final class FollowOwnerGoal extends Goal {
         private final AIPlayerEntity mob;
         private final double speed;
-        private ServerPlayer owner;
+        private Player owner;
 
         private FollowOwnerGoal(AIPlayerEntity mob, double speed) {
             this.mob = mob;
@@ -101,7 +100,7 @@ public final class AIPlayerEntity extends PathfinderMob {
             owner = null;
         }
 
-        private ServerPlayer findOwner() {
+        private Player findOwner() {
             if (!(mob.level() instanceof ServerLevel serverLevel)) return null;
             for (String tag : mob.getTags()) {
                 if (!tag.startsWith(OWNER_TAG_PREFIX)) continue;
