@@ -102,9 +102,7 @@ public final class AIPlayerEntity extends PathfinderMob {
 
         @Override
         public boolean canUse() {
-            if (mob.level().isClientSide || mob.inventory.isEmpty() && !hasRoomForAnyItems()) {
-                return false;
-            }
+            if (mob.level().isClientSide) return false;
             target = mob.level().getEntitiesOfClass(
                             ItemEntity.class,
                             mob.getBoundingBox().inflate(ITEM_SEARCH_RADIUS),
@@ -150,13 +148,6 @@ public final class AIPlayerEntity extends PathfinderMob {
         public void stop() {
             mob.getNavigation().stop();
             target = null;
-        }
-
-        private boolean hasRoomForAnyItems() {
-            for (int slot = 0; slot < mob.inventory.getContainerSize(); slot++) {
-                if (mob.inventory.getItem(slot).isEmpty()) return true;
-            }
-            return false;
         }
     }
 
