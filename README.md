@@ -8,7 +8,7 @@ A configurable AI companion mod for **Minecraft Java 1.21.11**, built with **Fab
 - Configure provider, model ID, endpoint, API key, companion name, and personality.
 - Test the provider connection from the settings screen.
 - Choose the built-in Steve or Alex appearance.
-- Run `/spawnai` or `/spawnai <name>` (operator permission level 2) to spawn a companion.
+- An AI companion automatically joins each player when they enter a world, in Survival, Creative, Adventure, or Spectator mode. No command is needed. A saved owner tag prevents duplicate companions after reconnects or world restarts.\n- Optional operator commands: `/spawnai` or `/spawnai <name>`.
 - Hardcore survival AI: the companion panics after taking damage, avoids hostile monsters, follows its player, and wanders only when safe. It has normal player-like health and is persistent.
 - When a player chats within 32 blocks of a companion, the mod sends that message and a small game context (dimension, position, health) to the configured AI provider.
 - Conversation memory is kept per player in server memory, bounded by the configured number of recent messages. Use `/aiclear` to clear your conversation memory.
