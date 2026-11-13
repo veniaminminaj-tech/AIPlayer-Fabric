@@ -18,7 +18,6 @@ public final class AIPlayerChat {
     private static final Map<UUID, Deque<String>> MEMORY = new ConcurrentHashMap<>();
     private static final Map<UUID, Long> LAST_REQUEST = new ConcurrentHashMap<>();
     private static final long COOLDOWN_MS = 3000L;
-    private static final int MAX_REPLY_CHARS = 350;
 
     private AIPlayerChat() {}
 
@@ -67,12 +66,11 @@ public final class AIPlayerChat {
             Deque<String> history = MEMORY.computeIfAbsent(sender.getUUID(), ignored -> new ArrayDeque<>());
             String prompt;
             synchronized (history) {
-                StringBuilder conversation = new StringBuilder(playerContext).append("\nRecent conversation:\n");
+                StringBuilder conversation = new StringBuilder(playerContext).append("\nFull conversation history:\n");
                 for (String line : history) conversation.append(line).append('\n');
                 conversation.append(playerName).append(": ").append(promptText);
                 prompt = conversation.toString();
                 history.addLast(playerName + ": " + promptText);
-                trimHistory(history, config.memoryMessages);
             }
 
             MinecraftServer server = sender.level().getServer();
@@ -83,10 +81,9 @@ public final class AIPlayerChat {
                             Component.literal("[" + trigger + "] I couldn't reach the AI provider. Check the server log and settings."), false);
                     return;
                 }
-                String safeReply = trimReply(reply);
+                String safeReply = reply == null ? "I don't have a response right now." : reply.trim();
                 synchronized (history) {
                     history.addLast(trigger + ": " + safeReply);
-                    trimHistory(history, config.memoryMessages);
                 }
                 server.getPlayerList().broadcastSystemMessage(
                         Component.literal("[" + trigger + "] " + safeReply), false);
@@ -107,15 +104,5 @@ public final class AIPlayerChat {
             return rest.replaceFirst("^[,: ]+", "").trim();
         }
         return null;
-    }
-
-    private static void trimHistory(Deque<String> history, int memoryMessages) {
-        while (history.size() > Math.max(0, memoryMessages) * 2) history.removeFirst();
-    }
-
-    private static String trimReply(String reply) {
-        if (reply == null) return "I don't have a response right now.";
-        String clean = reply.trim();
-        return clean.length() > MAX_REPLY_CHARS ? clean.substring(0, MAX_REPLY_CHARS - 1) + "…" : clean;
     }
 }
