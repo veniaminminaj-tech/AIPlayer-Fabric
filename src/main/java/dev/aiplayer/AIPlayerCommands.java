@@ -22,7 +22,7 @@ public final class AIPlayerCommands {
 
     private static void registerCommands(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("spawnai")
-                .requires(source -> source.hasPermission(2))
+                .requires(Commands.hasPermission(Commands.LEVEL_ADMINS))
                 .executes(context -> spawn(context.getSource(), AIPlayerConfig.get().botName))
                 .then(Commands.argument("name", StringArgumentType.word())
                         .executes(context -> spawn(context.getSource(),
