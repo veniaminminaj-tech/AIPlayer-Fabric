@@ -18,7 +18,10 @@ public final class AISettingsScreen extends Screen {
     private EditBox modelBox;
     private EditBox endpointBox;
     private EditBox keyBox;
-    private String status = "Choose a provider and enter its settings.";
+    private EditBox nameBox;
+    private EditBox personalityBox;
+    private String status = "Configure your AI companion.";
+    private int statusColor = 0xA0E0A0;
 
     public AISettingsScreen() {
         super(Component.literal("AI Player Settings"));
@@ -31,51 +34,51 @@ public final class AISettingsScreen extends Screen {
 
         int center = this.width / 2;
         int left = center - 150;
-        int y = this.height / 2 - 105;
+        int y = Math.max(38, this.height / 2 - 145);
 
         addRenderableWidget(Button.builder(providerLabel(), button -> {
             providerIndex = (providerIndex + 1) % PROVIDERS.size();
             button.setMessage(providerLabel());
             String provider = PROVIDERS.get(providerIndex);
-            if (modelBox != null) modelBox.setValue(AIPlayerConfig.defaultModel(provider));
-            if (endpointBox != null) endpointBox.setValue(AIPlayerConfig.defaultEndpoint(provider));
+            modelBox.setValue(AIPlayerConfig.defaultModel(provider));
+            endpointBox.setValue(AIPlayerConfig.defaultEndpoint(provider));
+            status = "Preset loaded. Enter your key if this provider requires one.";
         }).bounds(left, y, 300, 20).build());
 
-        y += 29;
-        modelBox = new EditBox(font, left, y, 300, 20, Component.literal("Model"));
-        modelBox.setMaxLength(128);
-        modelBox.setValue(config.model == null ? "" : config.model);
-        modelBox.setHint(Component.literal("Model ID"));
-        addRenderableWidget(modelBox);
+        y += 25;
+        modelBox = field(left, y, "Model ID", config.model, 128);
+        y += 25;
+        endpointBox = field(left, y, "API endpoint URL", config.endpoint, 512);
+        y += 25;
+        keyBox = field(left, y, "API key (local config)", config.apiKey, 512);
+        y += 25;
+        nameBox = field(left, y, "Companion name", config.botName, 32);
+        y += 25;
+        personalityBox = field(left, y, "Personality", config.personality, 180);
 
-        y += 29;
-        endpointBox = new EditBox(font, left, y, 300, 20, Component.literal("Endpoint"));
-        endpointBox.setMaxLength(512);
-        endpointBox.setValue(config.endpoint == null ? "" : config.endpoint);
-        endpointBox.setHint(Component.literal("API endpoint URL"));
-        addRenderableWidget(endpointBox);
-
-        y += 29;
-        keyBox = new EditBox(font, left, y, 300, 20, Component.literal("API key"));
-        keyBox.setMaxLength(512);
-        keyBox.setValue(config.apiKey == null ? "" : config.apiKey);
-        keyBox.setHint(Component.literal("API key (not needed for Ollama)"));
-        addRenderableWidget(keyBox);
-
-        y += 34;
-        addRenderableWidget(Button.builder(Component.literal("Save"), button -> save())
+        y += 30;
+        addRenderableWidget(Button.builder(Component.literal("Save settings"), button -> save())
                 .bounds(left, y, 145, 20).build());
         addRenderableWidget(Button.builder(Component.literal("Test connection"), button -> testConnection())
                 .bounds(left + 155, y, 145, 20).build());
 
         y += 25;
         addRenderableWidget(Button.builder(Component.literal("Skin: " + config.skin), button -> {
-            AIPlayerConfig.get().skin = AIPlayerConfig.get().skin.equals("steve") ? "alex" : "steve";
-            button.setMessage(Component.literal("Skin: " + AIPlayerConfig.get().skin));
-            status = "Skin preference saved when you press Save.";
+            config.skin = "steve".equalsIgnoreCase(config.skin) ? "alex" : "steve";
+            button.setMessage(Component.literal("Skin: " + config.skin));
+            status = "Skin preference updated. Press Save settings.";
         }).bounds(left, y, 145, 20).build());
         addRenderableWidget(Button.builder(Component.literal("Done"), button -> onClose())
                 .bounds(left + 155, y, 145, 20).build());
+    }
+
+    private EditBox field(int x, int y, String hint, String value, int maxLength) {
+        EditBox box = new EditBox(font, x, y, 300, 20, Component.literal(hint));
+        box.setMaxLength(maxLength);
+        box.setValue(value == null ? "" : value);
+        box.setHint(Component.literal(hint));
+        addRenderableWidget(box);
+        return box;
     }
 
     private Component providerLabel() {
@@ -88,24 +91,34 @@ public final class AISettingsScreen extends Screen {
         config.model = modelBox.getValue().trim();
         config.endpoint = endpointBox.getValue().trim();
         config.apiKey = keyBox.getValue().trim();
+        config.botName = nameBox.getValue().trim().isEmpty() ? "AI Player" : nameBox.getValue().trim();
+        config.personality = personalityBox.getValue().trim().isEmpty()
+                ? "Friendly, curious, helpful, and knowledgeable about Minecraft."
+                : personalityBox.getValue().trim();
         try {
             AIPlayerConfig.save();
-            status = "Settings saved to config/aiplayer.json";
+            status = "Saved to config/aiplayer.json";
+            statusColor = 0x80E0A0;
         } catch (Exception e) {
             status = "Save failed: " + e.getMessage();
+            statusColor = 0xFF8080;
             AIPlayerMod.LOGGER.error("Could not save AI settings.", e);
         }
     }
 
     private void testConnection() {
         save();
+        if (status.startsWith("Save failed")) return;
         status = "Testing provider connection...";
+        statusColor = 0xFFFF80;
         AIProviderClient.ask("Reply with exactly: connection successful")
                 .whenComplete((reply, error) -> Minecraft.getInstance().execute(() -> {
                     if (error != null) {
                         status = "Connection failed: " + error.getMessage();
+                        statusColor = 0xFF8080;
                     } else {
-                        status = "Connected: " + reply;
+                        status = "Connected successfully.";
+                        statusColor = 0x80E0A0;
                     }
                 }));
     }
@@ -114,9 +127,9 @@ public final class AISettingsScreen extends Screen {
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
         renderBackground(graphics, mouseX, mouseY, delta);
         super.render(graphics, mouseX, mouseY, delta);
-        graphics.drawCenteredString(font, title, width / 2, height / 2 - 132, 0xFFFFFF);
-        graphics.drawCenteredString(font, status, width / 2, height / 2 + 100, 0xA0E0A0);
-        graphics.drawCenteredString(font, "API key stays in your local config file.", width / 2, height - 18, 0xAAAAAA);
+        graphics.drawCenteredString(font, title, width / 2, 18, 0xFFFFFF);
+        graphics.drawCenteredString(font, status, width / 2, height - 28, statusColor);
+        graphics.drawCenteredString(font, "P: open settings  |  /spawnai [name]  |  /aiclear", width / 2, height - 14, 0xAAAAAA);
     }
 
     @Override
