@@ -22,10 +22,10 @@ public final class AIPlayerChat {
 
     public static void register() {
         ServerMessageEvents.CHAT_MESSAGE.register((message, sender, parameters) -> {
-            AIPlayerEntity bot = sender.serverLevel()
+            AIPlayerEntity bot = sender.level()
                     .getEntitiesOfClass(AIPlayerEntity.class, sender.getBoundingBox().inflate(32.0))
                     .stream()
-                    .min(Comparator.comparingDouble(entity -> entity.distanceToSqr(sender)))
+                    .min(Comparator.comparingDouble((AIPlayerEntity entity) -> entity.distanceToSqr(sender)))
                     .orElse(null);
 
             if (bot == null) return;
@@ -33,12 +33,12 @@ public final class AIPlayerChat {
             AIPlayerConfig config = AIPlayerConfig.get();
             String playerName = sender.getName().getString();
             String playerContext = "Player: " + playerName
-                    + ". Dimension: " + sender.level().dimension().location()
+                    + ". Dimension: " + sender.level().dimension().identifier()
                     + ". Position: " + sender.blockPosition().getX() + ", "
                     + sender.blockPosition().getY() + ", " + sender.blockPosition().getZ()
                     + ". Health: " + Math.round(sender.getHealth()) + "/" + Math.round(sender.getMaxHealth())
                     + ". Nearby companion: " + bot.getName().getString() + ".";
-            String playerText = message.getContent();
+            String playerText = message.signedContent();
 
             Deque<String> history = MEMORY.computeIfAbsent(sender.getUUID(), ignored -> new ArrayDeque<>());
             String prompt;
@@ -52,7 +52,7 @@ public final class AIPlayerChat {
             }
 
             AIProviderClient.ask(prompt).whenComplete((reply, error) -> {
-                sender.getServer().execute(() -> {
+                sender.level().getServer().execute(() -> {
                     if (!sender.isRemoved()) {
                         String answer = error == null ? reply : "Connection error: " + rootMessage(error);
                         sender.sendSystemMessage(Component.literal("[" + config.botName + "] " + answer));
