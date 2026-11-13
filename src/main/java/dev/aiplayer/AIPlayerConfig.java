@@ -17,6 +17,8 @@ public final class AIPlayerConfig {
     public String endpoint = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
     public String skin = "steve";
     public String botName = "AI Player";
+    public String personality = "Friendly, curious, helpful, and knowledgeable about Minecraft.";
+    public int memoryMessages = 8;
 
     private static AIPlayerConfig INSTANCE = new AIPlayerConfig();
 
@@ -30,7 +32,18 @@ public final class AIPlayerConfig {
         try {
             if (Files.exists(FILE)) {
                 AIPlayerConfig loaded = GSON.fromJson(Files.readString(FILE), AIPlayerConfig.class);
-                if (loaded != null) INSTANCE = loaded;
+                if (loaded != null) {
+                    if (loaded.provider == null) loaded.provider = "Gemini";
+                    if (loaded.model == null) loaded.model = defaultModel(loaded.provider);
+                    if (loaded.endpoint == null) loaded.endpoint = defaultEndpoint(loaded.provider);
+                    if (loaded.apiKey == null) loaded.apiKey = "";
+                    if (loaded.skin == null) loaded.skin = "steve";
+                    if (loaded.botName == null || loaded.botName.isBlank()) loaded.botName = "AI Player";
+                    if (loaded.personality == null || loaded.personality.isBlank())
+                        loaded.personality = "Friendly, curious, helpful, and knowledgeable about Minecraft.";
+                    loaded.memoryMessages = Math.max(0, Math.min(20, loaded.memoryMessages));
+                    INSTANCE = loaded;
+                }
             }
         } catch (Exception e) {
             AIPlayerMod.LOGGER.error("Could not read config/aiplayer.json; using defaults.", e);
