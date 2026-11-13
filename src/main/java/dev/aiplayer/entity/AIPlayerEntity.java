@@ -3,6 +3,7 @@ package dev.aiplayer.entity;
 import dev.aiplayer.AIPlayerConfig;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.Mob;
@@ -24,6 +25,9 @@ import java.util.UUID;
 
 public final class AIPlayerEntity extends PathfinderMob {
     private static final String OWNER_TAG_PREFIX = "aiplayer_owner_";
+    private static final double FOLLOW_START_DISTANCE_SQUARED = 12.25;
+    private static final double FOLLOW_STOP_DISTANCE_SQUARED = 6.25;
+    private static final double FOLLOW_MAX_DISTANCE_SQUARED = 4096.0;
 
     public AIPlayerEntity(EntityType<? extends PathfinderMob> type, Level level) {
         super(type, level);
@@ -32,11 +36,15 @@ public final class AIPlayerEntity extends PathfinderMob {
         setPersistenceRequired();
     }
 
+    public static String ownerTag(UUID ownerId) {
+        return OWNER_TAG_PREFIX + ownerId;
+    }
+
     public static AttributeSupplier.Builder createAttributes() {
         return Mob.createMobAttributes()
                 .add(Attributes.MAX_HEALTH, 20.0)
-                .add(Attributes.MOVEMENT_SPEED, 0.28)
-                .add(Attributes.FOLLOW_RANGE, 32.0)
+                .add(Attributes.MOVEMENT_SPEED, 0.30)
+                .add(Attributes.FOLLOW_RANGE, 64.0)
                 .add(Attributes.KNOCKBACK_RESISTANCE, 0.15);
     }
 
@@ -45,18 +53,22 @@ public final class AIPlayerEntity extends PathfinderMob {
         goalSelector.addGoal(0, new FloatGoal(this));
         goalSelector.addGoal(1, new PanicGoal(this, 1.45));
         goalSelector.addGoal(2, new AvoidEntityGoal<>(this, Monster.class, 10.0F, 1.15, 1.45));
-        goalSelector.addGoal(3, new FollowNearbyPlayerGoal(this, 1.12));
+        goalSelector.addGoal(3, new FollowOwnerGoal(this, 1.15));
         goalSelector.addGoal(4, new WaterAvoidingRandomStrollGoal(this, 1.0));
         goalSelector.addGoal(5, new LookAtPlayerGoal(this, Player.class, 8.0F));
         goalSelector.addGoal(6, new RandomLookAroundGoal(this));
     }
 
-    private static final class FollowNearbyPlayerGoal extends Goal {
+    /**
+     * Follows only the player who owns this companion. It deliberately does not
+     * fall back to the nearest player, which could make companions follow strangers.
+     */
+    private static final class FollowOwnerGoal extends Goal {
         private final AIPlayerEntity mob;
         private final double speed;
-        private Player target;
+        private ServerPlayer owner;
 
-        private FollowNearbyPlayerGoal(AIPlayerEntity mob, double speed) {
+        private FollowOwnerGoal(AIPlayerEntity mob, double speed) {
             this.mob = mob;
             this.speed = speed;
             setFlags(EnumSet.of(Goal.Flag.MOVE));
@@ -64,42 +76,45 @@ public final class AIPlayerEntity extends PathfinderMob {
 
         @Override
         public boolean canUse() {
-            target = findTarget();
-            return target != null && target.isAlive() && mob.distanceToSqr(target) > 6.25;
+            owner = findOwner();
+            return owner != null && owner.isAlive()
+                    && mob.distanceToSqr(owner) > FOLLOW_START_DISTANCE_SQUARED;
         }
 
         @Override
         public boolean canContinueToUse() {
-            return target != null && target.isAlive()
-                    && mob.distanceToSqr(target) > 6.25
-                    && mob.distanceToSqr(target) < 256.0;
+            return owner != null && owner.isAlive()
+                    && owner.level() == mob.level()
+                    && mob.distanceToSqr(owner) > FOLLOW_STOP_DISTANCE_SQUARED
+                    && mob.distanceToSqr(owner) < FOLLOW_MAX_DISTANCE_SQUARED;
         }
 
         @Override
         public void tick() {
-            if (target != null) mob.getNavigation().moveTo(target, speed);
+            // Re-path periodically instead of recalculating the route every game tick.
+            if (owner != null && mob.tickCount % 10 == 0) {
+                mob.getNavigation().moveTo(owner, speed);
+            }
         }
 
         @Override
         public void stop() {
             mob.getNavigation().stop();
-            target = null;
+            owner = null;
         }
 
-        private Player findTarget() {
+        private ServerPlayer findOwner() {
+            if (!(mob.level() instanceof ServerLevel serverLevel)) return null;
             for (String tag : mob.getTags()) {
                 if (!tag.startsWith(OWNER_TAG_PREFIX)) continue;
                 try {
                     UUID ownerId = UUID.fromString(tag.substring(OWNER_TAG_PREFIX.length()));
-                    if (mob.level() instanceof ServerLevel serverLevel) {
-                        Player owner = serverLevel.getPlayerByUUID(ownerId);
-                        if (owner != null) return owner;
-                    }
+                    return serverLevel.getPlayerByUUID(ownerId);
                 } catch (IllegalArgumentException ignored) {
-                    // Ignore malformed ownership tags.
+                    // Ignore malformed ownership tags and keep searching.
                 }
             }
-            return mob.level().getNearestPlayer(mob, 16.0);
+            return null;
         }
     }
 }
