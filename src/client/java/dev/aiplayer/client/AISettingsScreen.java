@@ -58,7 +58,6 @@ public final class AISettingsScreen extends Screen {
         y += 29;
         keyBox = new EditBox(font, left, y, 300, 20, Component.literal("API key"));
         keyBox.setMaxLength(512);
-        keyBox.setPasswordMode(true);
         keyBox.setValue(config.apiKey == null ? "" : config.apiKey);
         keyBox.setHint(Component.literal("API key (not needed for Ollama)"));
         addRenderableWidget(keyBox);
