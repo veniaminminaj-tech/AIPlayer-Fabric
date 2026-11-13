@@ -22,14 +22,21 @@ public final class AIPlayerCommands {
 
     private static void registerCommands(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("spawnai")
+                .requires(source -> source.hasPermission(2))
                 .executes(context -> spawn(context.getSource(), AIPlayerConfig.get().botName))
                 .then(Commands.argument("name", StringArgumentType.word())
                         .executes(context -> spawn(context.getSource(),
                                 StringArgumentType.getString(context, "name")))));
         dispatcher.register(Commands.literal("aiclear")
                 .executes(context -> {
-                    AIPlayerChat.clearMemory(context.getSource().getPlayerOrException().getUUID());
-                    context.getSource().sendSuccess(() -> Component.literal("Your AI companion conversation memory was cleared."), false);
+                    var source = context.getSource();
+                    var player = source.getPlayer();
+                    if (player == null) {
+                        source.sendFailure(Component.literal("This command can only be used by a player."));
+                        return 0;
+                    }
+                    AIPlayerChat.clearMemory(player.getUUID());
+                    source.sendSuccess(() -> Component.literal("Your AI companion conversation memory was cleared."), false);
                     return 1;
                 }));
     }
@@ -48,7 +55,10 @@ public final class AIPlayerCommands {
         bot.setPos(pos.x, pos.y, pos.z);
         bot.setYRot(source.getRotation().y);
         bot.setXRot(0.0F);
-        level.addFreshEntity(bot);
+        if (!level.addFreshEntity(bot)) {
+            source.sendFailure(Component.literal("Could not spawn AI companion at this location."));
+            return 0;
+        }
         source.sendSuccess(() -> Component.literal("Spawned AI companion: " + safeName), false);
         return 1;
     }
