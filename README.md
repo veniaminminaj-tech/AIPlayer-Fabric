@@ -11,7 +11,8 @@ The companion can follow its owner, wander around, react to nearby threats, and 
 - Each companion is assigned to its owner rather than simply following the nearest player.
 - Companion movement includes following, looking at players, wandering, and avoiding hostile mobs.
 - Talk to the companion using its name prefix or `@BotName` in chat.
-- Conversation context is kept separately for each player while the server is running.
+- Conversation history has no artificial message-count or reply-character cap; it is kept separately for each player while the server is running.
+- The mod does not force a `max_tokens` value in chat requests; the selected provider/model controls its own context and output limits.
 - AI requests run asynchronously.
 - Settings screen opens with **M**.
 - Supported providers: **Google Gemini, OpenRouter, DeepSeek, and OpenAI**.
@@ -130,7 +131,8 @@ GitHub Actions builds the project when changes are pushed. Download the JAR from
 
 - The companion is a Minecraft entity, not a real player account.
 - It does not currently perform AI-controlled mining, crafting, building, or combat.
-- Conversation memory is temporary and is not retained after the server stops.
+- Conversation memory is temporary and is not retained after the server stops. It can grow until the provider's context limit is reached; providers do not offer truly unlimited context.
+- Microphone input / speech-to-text is not implemented yet. The companion currently receives text chat only and does not speak.
 - Custom skin changes require a Minecraft restart.
 - A working internet connection and a valid API key are required for cloud AI providers.
 
