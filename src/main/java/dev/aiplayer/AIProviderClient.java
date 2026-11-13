@@ -59,7 +59,7 @@ public final class AIProviderClient {
         messages.add(user);
         root.add("messages", messages);
         root.addProperty("temperature", 0.7);
-        root.addProperty("max_tokens", 180);
+        // Do not send max_tokens: allow the provider/model to use its configured output limit.
 
         HttpRequest.Builder builder;
         try {
