@@ -80,12 +80,14 @@ public final class AIPlayerConfig {
             Files.createDirectories(PLAYER_FOLDER);
             if (Files.notExists(API_KEY_FILE)) Files.writeString(API_KEY_FILE, "");
             if (Files.notExists(README_FILE)) {
-                Files.writeString(README_FILE,
-                        "AI Player files\\n\\n"
-                        + "1. Paste your provider API key into api-key.txt and save the file.\\n"
-                        + "2. Put your Minecraft player skin PNG at skin.png (64x64 pixels).\\n"
-                        + "3. Restart Minecraft after changing skin.png.\\n"
-                        + "4. Keep api-key.txt private; do not share it or upload it to GitHub.\\n");
+                Files.writeString(README_FILE, """
+                        AI Player files
+
+                        1. Paste your provider API key into api-key.txt and save the file.
+                        2. Put your Minecraft player skin PNG at skin.png (64x64 pixels).
+                        3. Restart Minecraft after changing skin.png.
+                        4. Keep api-key.txt private; do not share it or upload it to GitHub.
+                        """);
             }
         } catch (IOException e) {
             AIPlayerMod.LOGGER.error("Could not create .minecraft/ai-playerv folder.", e);
