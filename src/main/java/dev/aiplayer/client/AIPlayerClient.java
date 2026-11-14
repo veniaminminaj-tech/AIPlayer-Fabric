@@ -4,7 +4,6 @@ import dev.aiplayer.network.BlockyHelloPayload;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
-import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.minecraft.network.chat.Component;
 
 public final class AIPlayerClient implements ClientModInitializer {
@@ -21,11 +20,6 @@ public final class AIPlayerClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
-        PayloadTypeRegistry.playS2C().register(
-                BlockyHelloPayload.TYPE,
-                BlockyHelloPayload.STREAM_CODEC
-        );
-
         ClientPlayNetworking.registerGlobalReceiver(BlockyHelloPayload.TYPE, (payload, context) ->
                 context.client().execute(() -> {
                     connectionMode = ConnectionMode.FULL_MOD;
