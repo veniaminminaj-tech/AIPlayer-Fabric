@@ -116,7 +116,10 @@ public final class AISettingsScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
-        renderBackground(graphics, mouseX, mouseY, delta);
+        // Avoid Screen.renderBackground(): on 1.21.11 its blur path can be invoked
+        // twice in the same frame by layered screens, throwing "Can only blur once per frame".
+        // A simple translucent fill keeps the settings screen readable without blur state.
+        graphics.fill(0, 0, width, height, 0xD0101722);
         super.render(graphics, mouseX, mouseY, delta);
         graphics.drawCenteredString(font, title, width / 2, 18, 0xFFFFFF);
         graphics.drawCenteredString(font, status, width / 2, height - 28, statusColor);
