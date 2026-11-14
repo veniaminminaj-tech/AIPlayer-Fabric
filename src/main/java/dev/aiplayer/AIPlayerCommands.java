@@ -49,8 +49,35 @@ public final class AIPlayerCommands {
                 .executes(context -> toggleGatherMode(context.getSource())));
         dispatcher.register(Commands.literal("aibrain")
                 .executes(context -> showBrainStatus(context.getSource())));
+        dispatcher.register(Commands.literal("aipvp")
+                .then(Commands.literal("start")
+                        .executes(context -> setPvpTraining(context.getSource(), true)))
+                .then(Commands.literal("stop")
+                        .executes(context -> setPvpTraining(context.getSource(), false)))
+                .then(Commands.literal("difficulty")
+                        .then(Commands.literal("medium")
+                                .executes(context -> setPvpTraining(context.getSource(), true)))));
     }
 
+
+    private static int setPvpTraining(CommandSourceStack source, boolean enabled) {
+        ServerPlayer player = source.getPlayer();
+        if (player == null) {
+            source.sendFailure(Component.literal("This command can only be used by a player."));
+            return 0;
+        }
+        AIPlayerEntity companion = findOwnedCompanion(player);
+        if (companion == null) {
+            source.sendFailure(Component.literal("Blocky was not found within 256 blocks."));
+            return 0;
+        }
+        companion.setPvpTrainingMode(enabled);
+        String message = enabled
+                ? "Blocky PvP training started — medium difficulty. Use /aipvp stop to end."
+                : "Blocky PvP training stopped.";
+        source.sendSuccess(() -> Component.literal(message), false);
+        return 1;
+    }
 
     private static int showBrainStatus(CommandSourceStack source) {
         ServerPlayer player = source.getPlayer();
@@ -64,7 +91,8 @@ public final class AIPlayerCommands {
             return 0;
         }
         String status = "Blocky objective: " + companion.getBrainObjective()
-                + " | wood gathering: " + (companion.isGatherMode() ? "ON" : "OFF");
+                + " | wood gathering: " + (companion.isGatherMode() ? "ON" : "OFF")
+                + " | PvP training: " + (companion.isPvpTrainingMode() ? "ON (medium)" : "OFF");
         source.sendSuccess(() -> Component.literal(status), false);
         return 1;
     }
