@@ -52,6 +52,7 @@ public final class AIPlayerEntity extends PathfinderMob {
     private String brainObjective = "FOLLOW_OWNER";
     private boolean plannerBusy;
     private int lastPlannerTick;
+    private boolean pvpTrainingMode;
 
     public AIPlayerEntity(EntityType<? extends PathfinderMob> type, Level level) {
         super(type, level);
@@ -82,20 +83,22 @@ public final class AIPlayerEntity extends PathfinderMob {
                 .add(Attributes.MAX_HEALTH, 20.0)
                 .add(Attributes.MOVEMENT_SPEED, 0.30)
                 .add(Attributes.FOLLOW_RANGE, 64.0)
-                .add(Attributes.KNOCKBACK_RESISTANCE, 0.15);
+                .add(Attributes.KNOCKBACK_RESISTANCE, 0.15)
+                .add(Attributes.ATTACK_DAMAGE, 3.0);
     }
 
     @Override
     protected void registerGoals() {
         goalSelector.addGoal(0, new FloatGoal(this));
         goalSelector.addGoal(1, new PanicGoal(this, 1.45));
-        goalSelector.addGoal(2, new AvoidEntityGoal<>(this, Monster.class, 10.0F, 1.15, 1.45));
-        goalSelector.addGoal(3, new GatherLogsGoal(this, 1.0));
-        goalSelector.addGoal(4, new CollectItemsGoal(this, 1.05));
-        goalSelector.addGoal(5, new FollowOwnerGoal(this, 1.15));
-        goalSelector.addGoal(6, new WaterAvoidingRandomStrollGoal(this, 1.0));
-        goalSelector.addGoal(7, new LookAtPlayerGoal(this, Player.class, AI_VIEW_RANGE));
-        goalSelector.addGoal(8, new RandomLookAroundGoal(this));
+        goalSelector.addGoal(2, new OwnerPvpGoal(this, 1.15));
+        goalSelector.addGoal(3, new AvoidEntityGoal<>(this, Monster.class, 10.0F, 1.15, 1.45));
+        goalSelector.addGoal(4, new GatherLogsGoal(this, 1.0));
+        goalSelector.addGoal(5, new CollectItemsGoal(this, 1.05));
+        goalSelector.addGoal(6, new FollowOwnerGoal(this, 1.15));
+        goalSelector.addGoal(7, new WaterAvoidingRandomStrollGoal(this, 1.0));
+        goalSelector.addGoal(8, new LookAtPlayerGoal(this, Player.class, AI_VIEW_RANGE));
+        goalSelector.addGoal(9, new RandomLookAroundGoal(this));
     }
 
     @Override
@@ -104,6 +107,7 @@ public final class AIPlayerEntity extends PathfinderMob {
         inventory.storeAsItemList(output.list("Inventory", ItemStack.CODEC));
         output.putBoolean("GatherMode", gatherMode);
         output.putString("BrainObjective", brainObjective);
+        output.putBoolean("PvpTrainingMode", pvpTrainingMode);
     }
 
     @Override
@@ -112,6 +116,7 @@ public final class AIPlayerEntity extends PathfinderMob {
         inventory.fromItemList(input.listOrEmpty("Inventory", ItemStack.CODEC));
         gatherMode = input.getBooleanOr("GatherMode", false);
         brainObjective = input.getStringOr("BrainObjective", "FOLLOW_OWNER");
+        pvpTrainingMode = input.getBooleanOr("PvpTrainingMode", false);
     }
 
 
@@ -127,6 +132,21 @@ public final class AIPlayerEntity extends PathfinderMob {
 
     public String getBrainObjective() {
         return brainObjective;
+    }
+
+    public boolean isPvpTrainingMode() {
+        return pvpTrainingMode;
+    }
+
+    public void setPvpTrainingMode(boolean enabled) {
+        pvpTrainingMode = enabled;
+        if (enabled) {
+            gatherMode = false;
+            brainObjective = "PVP_TRAINING_MEDIUM";
+        } else if ("PVP_TRAINING_MEDIUM".equals(brainObjective)) {
+            brainObjective = "FOLLOW_OWNER";
+        }
+        if (!enabled) getNavigation().stop();
     }
 
     private void requestStrategicDecision(ServerLevel serverLevel) {
@@ -225,6 +245,63 @@ public final class AIPlayerEntity extends PathfinderMob {
             }
         }
         return null;
+    }
+
+    private static final class OwnerPvpGoal extends Goal {
+        private final AIPlayerEntity mob;
+        private final double speed;
+        private Player owner;
+        private int attackCooldown;
+
+        private OwnerPvpGoal(AIPlayerEntity mob, double speed) {
+            this.mob = mob;
+            this.speed = speed;
+            setFlags(EnumSet.of(Goal.Flag.MOVE, Goal.Flag.LOOK));
+        }
+
+        @Override
+        public boolean canUse() {
+            if (!mob.pvpTrainingMode || !(mob.level() instanceof ServerLevel serverLevel)) return false;
+            owner = mob.findOwner(serverLevel);
+            return owner != null && owner.isAlive() && owner.level() == mob.level()
+                    && mob.distanceToSqr(owner) <= 24.0 * 24.0;
+        }
+
+        @Override
+        public boolean canContinueToUse() {
+            return mob.pvpTrainingMode && owner != null && owner.isAlive()
+                    && owner.level() == mob.level()
+                    && mob.distanceToSqr(owner) <= 24.0 * 24.0;
+        }
+
+        @Override
+        public void start() {
+            attackCooldown = 12;
+        }
+
+        @Override
+        public void tick() {
+            if (owner == null) return;
+            mob.getLookControl().setLookAt(owner, 30.0F, 30.0F);
+            if (mob.tickCount % 5 == 0 && mob.distanceToSqr(owner) > 3.2 * 3.2) {
+                mob.getNavigation().moveTo(owner, speed);
+            }
+            if (attackCooldown > 0) attackCooldown--;
+            if (mob.distanceToSqr(owner) <= 3.2 * 3.2
+                    && attackCooldown <= 0 && mob.hasLineOfSight(owner)) {
+                mob.swing(net.minecraft.world.InteractionHand.MAIN_HAND);
+                mob.doHurtTarget(owner);
+                // Medium difficulty: a readable reaction window, not instant attacks.
+                attackCooldown = 18 + mob.getRandom().nextInt(9);
+            }
+        }
+
+        @Override
+        public void stop() {
+            mob.getNavigation().stop();
+            owner = null;
+            attackCooldown = 0;
+        }
     }
 
     private static final class GatherLogsGoal extends Goal {
