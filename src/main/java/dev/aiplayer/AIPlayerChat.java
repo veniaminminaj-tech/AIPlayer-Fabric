@@ -1,6 +1,7 @@
 package dev.aiplayer;
 
-import dev.aiplayer.entity.AIPlayerEntity;\nimport net.minecraft.server.level.ServerLevel;
+import dev.aiplayer.entity.AIPlayerEntity;
+import net.minecraft.server.level.ServerLevel;
 import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.network.chat.Component;
