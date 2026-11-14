@@ -64,6 +64,9 @@ public final class AIPlayerChat {
                 return;
             }
 
+            // All non-basic requests enter the strategic planner as natural language.
+            bot.queueUserRequest(promptText);
+
             long now = System.currentTimeMillis();
             Long previous = LAST_REQUEST.put(sender.getUUID(), now);
             if (previous != null && now - previous < COOLDOWN_MS) {
@@ -108,16 +111,6 @@ public final class AIPlayerChat {
     private static String handleSimpleIntent(String text, AIPlayerEntity bot, ServerLevel level) {
         String normalized = text.toLowerCase(Locale.ROOT);
 
-        if (containsAny(normalized, "скрафти", "зроби предмет", "створи предмет",
-                "craft item", "craft something", "make an item", "крафтни")) {
-            return BlockyCrafting.craftOne(bot.getInventory(), level);
-        }
-        if (containsAny(normalized, "взаємодій з блоком", "попрацюй з пічкою", "завантаж піч",
-                "поклади в бочку", "взаємодій з контейнером", "interact with block",
-                "use nearby container", "use furnace", "use barrel")) {
-            return BlockyBlockInteraction.interactWithNearestContainer(
-                    bot.getInventory(), level, bot.blockPosition());
-        }
         if (containsAny(normalized, "зупини пвп", "закінчи пвп", "досить битися",
                 "припини бій", "stop pvp", "stop fighting", "end fight", "стоп пвп")) {
             if (bot.isPvpTrainingMode()) bot.setPvpTrainingMode(false);
