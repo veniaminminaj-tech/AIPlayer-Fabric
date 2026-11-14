@@ -18,6 +18,6 @@ public final class AIPlayerMod implements ModInitializer {
         AIPlayerCommands.register();
         AIPlayerAutoSpawn.register();
         AIPlayerChat.register();
-        LOGGER.info("AIPlayer initialized. Companions spawn automatically in every game mode; press M for settings.");
+        LOGGER.info("Blocky initialized. Player-like AI companion systems are loading; press M for settings.");
     }
 }
