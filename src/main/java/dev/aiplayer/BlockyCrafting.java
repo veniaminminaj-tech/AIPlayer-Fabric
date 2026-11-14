@@ -4,6 +4,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CraftingInput;
+import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeType;
 
@@ -11,10 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Uses the world's recipe manager, so vanilla and mod-registered crafting
- * recipes are handled by the same path.
- */
+/** Uses the world's recipe manager for vanilla and mod-registered recipes. */
 public final class BlockyCrafting {
     private BlockyCrafting() {}
 
@@ -25,43 +23,33 @@ public final class BlockyCrafting {
         }
 
         CraftingInput input = CraftingInput.of(3, 3, grid);
-        Optional<RecipeHolder<?>> match = level.recipeAccess()
+        Optional<RecipeHolder<CraftingRecipe>> match = level.recipeAccess()
                 .getRecipeFor(RecipeType.CRAFTING, input, level);
         if (match.isEmpty()) {
-            return "Не знайшов рецепта у перших 9 слотах інвентарю. Поклади інгредієнти у верхні 9 слотів і повтори.";
+            return "Не знайшов рецепта у перших 9 слотах. Розклади інгредієнти як у рецепті й повтори.";
         }
 
-        var recipe = match.get().value();
-        ItemStack result = recipe.assemble(input, level.registryAccess());
+        ItemStack result = match.get().value().assemble(input, level.registryAccess());
         if (result.isEmpty()) return "Рецепт знайдено, але він не створив предмет.";
 
-        // Compute all remainders before mutating the inventory.
-        List<ItemStack> remainders = recipe.getRemainingItems(input);
+        // Simulate first, so a full inventory never consumes ingredients.
+        SimpleContainer preview = new SimpleContainer(inventory.getContainerSize());
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+            preview.setItem(slot, inventory.getItem(slot).copy());
+        }
         for (int slot = 0; slot < 9; slot++) {
-            ItemStack ingredient = inventory.getItem(slot);
+            ItemStack ingredient = preview.getItem(slot);
             if (!ingredient.isEmpty()) {
                 ingredient.shrink(1);
-                if (ingredient.isEmpty()) inventory.setItem(slot, ItemStack.EMPTY);
-            }
-            ItemStack remainder = slot < remainders.size() ? remainders.get(slot) : ItemStack.EMPTY;
-            if (!remainder.isEmpty()) {
-                ItemStack leftover = inventory.addItem(remainder.copy());
-                if (!leftover.isEmpty()) {
-                    // Do not lose container items when the inventory is full.
-                    return "Місця не вистачило для предмета, що повертається рецептом. Звільни інвентар і повтори.";
-                }
+                if (ingredient.isEmpty()) preview.setItem(slot, ItemStack.EMPTY);
             }
         }
+        ItemStack overflow = preview.addItem(result.copy());
+        if (!overflow.isEmpty()) return "Немає місця для результату. Звільни інвентар і повтори.";
 
-        ItemStack overflow = inventory.addItem(result.copy());
-        if (!overflow.isEmpty()) {
-            // Keep the crafted result safe if there is no room.
-            return "Рецепт готовий, але немає місця для результату. Звільни інвентар і повтори.";
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+            inventory.setItem(slot, preview.getItem(slot).copy());
         }
-
-        String namespace = result.getItemHolder().unwrapKey()
-                .map(key -> key.identifier().getNamespace()).orElse("unknown");
-        return "Готово: " + result.getCount() + "x " + result.getHoverName().getString()
-                + " (namespace: " + namespace + ").";
+        return "Готово: " + result.getCount() + "x " + result.getHoverName().getString() + ".";
     }
 }
