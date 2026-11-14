@@ -242,17 +242,26 @@ public final class AIPlayerEntity extends PathfinderMob {
                     if (decision.contains("ACTION=CRAFT_ITEM")) {
                         brainObjective = "CRAFT_ITEM";
                         gatherMode = false;
-                        AIPlayerMod.LOGGER.info("Blocky crafting result: {}", dev.aiplayer.BlockyCrafting.craftOne(inventory, serverLevel));
+                        String actionResult = dev.aiplayer.BlockyCrafting.craftOne(inventory, serverLevel);
+                        AIPlayerMod.LOGGER.info("Blocky crafting result: {}", actionResult);
+                        Player taskOwner = findOwner(serverLevel);
+                        if (taskOwner != null) taskOwner.sendSystemMessage(Component.literal("[Blocky] " + actionResult));
                         pendingUserRequest = "";
                     } else if (decision.contains("ACTION=SERVICE_FURNACE")) {
                         brainObjective = "SERVICE_FURNACE";
                         gatherMode = false;
-                        AIPlayerMod.LOGGER.info("Blocky furnace result: {}", dev.aiplayer.BlockyBlockInteraction.serviceNearestFurnace(inventory, serverLevel, blockPosition()));
+                        String actionResult = dev.aiplayer.BlockyBlockInteraction.serviceNearestFurnace(inventory, serverLevel, blockPosition());
+                        AIPlayerMod.LOGGER.info("Blocky furnace result: {}", actionResult);
+                        Player taskOwner = findOwner(serverLevel);
+                        if (taskOwner != null) taskOwner.sendSystemMessage(Component.literal("[Blocky] " + actionResult));
                         pendingUserRequest = "";
                     } else if (decision.contains("ACTION=STORE_EXCESS")) {
                         brainObjective = "STORE_EXCESS";
                         gatherMode = false;
-                        AIPlayerMod.LOGGER.info("Blocky storage result: {}", dev.aiplayer.BlockyBlockInteraction.storeExcessInNearestContainer(inventory, serverLevel, blockPosition()));
+                        String actionResult = dev.aiplayer.BlockyBlockInteraction.storeExcessInNearestContainer(inventory, serverLevel, blockPosition());
+                        AIPlayerMod.LOGGER.info("Blocky storage result: {}", actionResult);
+                        Player taskOwner = findOwner(serverLevel);
+                        if (taskOwner != null) taskOwner.sendSystemMessage(Component.literal("[Blocky] " + actionResult));
                         pendingUserRequest = "";
                     } else if (decision.contains("ACTION=GATHER_WOOD")) {
                         brainObjective = "GATHER_WOOD";
