@@ -1,0 +1,29 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Blocky Companion - Resource Pack",
+    "description": "Blocky companion model and visuals.",
+    "uuid": "2a9c5e71-8f34-4b6d-9c20-1e7a3f5b8d42",
+    "version": [
+      0,
+      1,
+      0
+    ],
+    "min_engine_version": [
+      1,
+      21,
+      100
+    ]
+  },
+  "modules": [
+    {
+      "type": "resources",
+      "uuid": "9b3d7f15-6c20-4e81-a5d9-2f8b4c6e1a73",
+      "version": [
+        0,
+        1,
+        0
+      ]
+    }
+  ]
+}
