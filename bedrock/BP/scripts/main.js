@@ -1,5 +1,5 @@
 import {
-  CommandPermissionLevel,
+  CustomCommandPermissionLevel,
   CustomCommandStatus,
   system,
   world
@@ -42,7 +42,7 @@ system.beforeEvents.startup.subscribe(({ customCommandRegistry }) => {
     {
       name: "blocky:aiplayerspawn",
       description: "Spawn your Blocky AI companion",
-      permissionLevel: CommandPermissionLevel.Any,
+      permissionLevel: CustomCommandPermissionLevel.Any,
       cheatsRequired: false
     },
     (origin) => {
