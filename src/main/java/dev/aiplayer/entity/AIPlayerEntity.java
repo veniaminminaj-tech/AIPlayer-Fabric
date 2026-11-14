@@ -1,6 +1,8 @@
 package dev.aiplayer.entity;
 
 import dev.aiplayer.AIPlayerConfig;
+import dev.aiplayer.AIPlayerMod;
+import dev.aiplayer.AIProviderClient;
 import net.minecraft.core.BlockPos;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.network.chat.Component;
@@ -46,6 +48,9 @@ public final class AIPlayerEntity extends PathfinderMob {
 
     private final SimpleContainer inventory = new SimpleContainer(27);
     private boolean gatherMode;
+    private String brainObjective = "FOLLOW_OWNER";
+    private boolean plannerBusy;
+    private int lastPlannerTick;
 
     public AIPlayerEntity(EntityType<? extends PathfinderMob> type, Level level) {
         super(type, level);
@@ -97,6 +102,7 @@ public final class AIPlayerEntity extends PathfinderMob {
         super.addAdditionalSaveData(output);
         inventory.storeAsItemList(output.list("Inventory", ItemStack.CODEC));
         output.putBoolean("GatherMode", gatherMode);
+        output.putString("BrainObjective", brainObjective);
     }
 
     @Override
@@ -104,6 +110,101 @@ public final class AIPlayerEntity extends PathfinderMob {
         super.readAdditionalSaveData(input);
         inventory.fromItemList(input.listOrEmpty("Inventory", ItemStack.CODEC));
         gatherMode = input.getBooleanOr("GatherMode", false);
+        brainObjective = input.getStringOr("BrainObjective", "FOLLOW_OWNER");
+    }
+
+
+    @Override
+    public void tick() {
+        super.tick();
+        if (level() instanceof ServerLevel serverLevel && !isRemoved()
+                && tickCount - lastPlannerTick >= 200 && !plannerBusy) {
+            lastPlannerTick = tickCount;
+            requestStrategicDecision(serverLevel);
+        }
+    }
+
+    public String getBrainObjective() {
+        return brainObjective;
+    }
+
+    private void requestStrategicDecision(ServerLevel serverLevel) {
+        Player owner = findOwner(serverLevel);
+        if (owner == null || !owner.isAlive() || distanceToSqr(owner) > 64.0 * 64.0) return;
+
+        plannerBusy = true;
+        StringBuilder inventorySummary = new StringBuilder();
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+            ItemStack stack = inventory.getItem(slot);
+            if (stack.isEmpty()) continue;
+            if (!inventorySummary.isEmpty()) inventorySummary.append(", ");
+            inventorySummary.append(stack.getCount()).append("x ").append(stack.getHoverName().getString());
+        }
+        if (inventorySummary.isEmpty()) inventorySummary.append("empty");
+
+        long nearbyHostiles = serverLevel.getEntitiesOfClass(
+                Monster.class, getBoundingBox().inflate(16.0), Entity::isAlive).size();
+        long nearbyLogs = BlockPos.betweenClosedStream(
+                        blockPosition().offset(-8, -2, -8),
+                        blockPosition().offset(8, 5, 8))
+                .filter(pos -> serverLevel.getBlockState(pos).is(BlockTags.LOGS))
+                .count();
+
+        String observation = """
+                You are the long-term planner for Blocky, an autonomous Minecraft survival companion.
+                Use a two-level agent design: you are the slow strategic planner; the mod handles movement and actions.
+                Choose exactly ONE action token, with no explanation:
+                ACTION=GATHER_WOOD
+                ACTION=FOLLOW_OWNER
+                ACTION=REST
+                Current objective: %s
+                Owner: %s
+                Health: %.1f/%.1f
+                Inventory: %s
+                Nearby logs: %d
+                Nearby hostile mobs: %d
+                Rules: prioritize survival and useful progress; do not repeat a failed action endlessly.
+                Choose GATHER_WOOD only if nearby logs exist and inventory is not already full.
+                Choose FOLLOW_OWNER if the owner is far away or the area has threats.
+                Otherwise choose REST.
+                """.formatted(brainObjective, owner.getName().getString(), getHealth(),
+                getMaxHealth(), inventorySummary, nearbyLogs, nearbyHostiles);
+
+        AIProviderClient.ask(observation).whenComplete((reply, error) ->
+                serverLevel.getServer().execute(() -> {
+                    plannerBusy = false;
+                    if (isRemoved() || !isAlive()) return;
+                    if (error != null) {
+                        AIPlayerMod.LOGGER.warn("Blocky planner request failed; keeping current objective.", error);
+                        return;
+                    }
+                    String decision = reply == null ? "" : reply.trim().toUpperCase(java.util.Locale.ROOT);
+                    if (decision.contains("ACTION=GATHER_WOOD")) {
+                        brainObjective = "GATHER_WOOD";
+                        if (!gatherMode) toggleGatherMode();
+                    } else if (decision.contains("ACTION=FOLLOW_OWNER")) {
+                        brainObjective = "FOLLOW_OWNER";
+                        gatherMode = false;
+                    } else if (decision.contains("ACTION=REST")) {
+                        brainObjective = "REST";
+                        gatherMode = false;
+                    } else {
+                        AIPlayerMod.LOGGER.warn("Blocky planner returned an unknown action: {}", reply);
+                    }
+                }));
+    }
+
+    private Player findOwner(ServerLevel serverLevel) {
+        for (String tag : getTags()) {
+            if (!tag.startsWith(OWNER_TAG_PREFIX)) continue;
+            try {
+                UUID ownerId = UUID.fromString(tag.substring(OWNER_TAG_PREFIX.length()));
+                return serverLevel.getPlayerByUUID(ownerId);
+            } catch (IllegalArgumentException ignored) {
+                // Ignore malformed ownership tags.
+            }
+        }
+        return null;
     }
 
     private FakePlayer createBlockyActor(ServerLevel serverLevel) {
