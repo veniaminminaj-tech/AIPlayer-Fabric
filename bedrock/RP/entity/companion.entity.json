@@ -1,0 +1,24 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "blocky:companion",
+      "materials": {
+        "default": "entity_alphatest"
+      },
+      "textures": {
+        "default": "textures/entity/steve"
+      },
+      "geometry": {
+        "default": "geometry.humanoid.custom"
+      },
+      "render_controllers": [
+        "controller.render.default"
+      ],
+      "spawn_egg": {
+        "base_color": "#35b6a8",
+        "overlay_color": "#183b55"
+      }
+    }
+  }
+}
