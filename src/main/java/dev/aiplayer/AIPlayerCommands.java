@@ -45,6 +45,8 @@ public final class AIPlayerCommands {
                 }));
         dispatcher.register(Commands.literal("aiinventory")
                 .executes(context -> showInventory(context.getSource())));
+        dispatcher.register(Commands.literal("aigather")
+                .executes(context -> toggleGatherMode(context.getSource())));
     }
 
     private static int showInventory(CommandSourceStack source) {
@@ -54,15 +56,7 @@ public final class AIPlayerCommands {
             return 0;
         }
 
-        String ownerTag = AIPlayerEntity.ownerTag(player.getUUID());
-        AIPlayerEntity companion = player.level().getEntitiesOfClass(
-                        AIPlayerEntity.class,
-                        player.getBoundingBox().inflate(256.0),
-                        entity -> entity.isAlive() && entity.getTags().contains(ownerTag))
-                .stream()
-                .min(Comparator.comparingDouble(player::distanceToSqr))
-                .orElse(null);
-
+        AIPlayerEntity companion = findOwnedCompanion(player);
         if (companion == null) {
             source.sendFailure(Component.literal("Your companion was not found within 256 blocks."));
             return 0;
@@ -82,6 +76,38 @@ public final class AIPlayerCommands {
                 : "Companion inventory (" + occupiedSlots + "/27 slots): " + items;
         source.sendSuccess(() -> Component.literal(inventoryText), false);
         return 1;
+    }
+
+    private static int toggleGatherMode(CommandSourceStack source) {
+        ServerPlayer player = source.getPlayer();
+        if (player == null) {
+            source.sendFailure(Component.literal("This command can only be used by a player."));
+            return 0;
+        }
+
+        AIPlayerEntity companion = findOwnedCompanion(player);
+        if (companion == null) {
+            source.sendFailure(Component.literal("Your companion was not found within 256 blocks."));
+            return 0;
+        }
+
+        boolean enabled = companion.toggleGatherMode();
+        String message = enabled
+                ? "Log gathering enabled. Your companion will harvest nearby tree logs."
+                : "Log gathering disabled.";
+        source.sendSuccess(() -> Component.literal(message), false);
+        return 1;
+    }
+
+    private static AIPlayerEntity findOwnedCompanion(ServerPlayer player) {
+        String ownerTag = AIPlayerEntity.ownerTag(player.getUUID());
+        return player.level().getEntitiesOfClass(
+                        AIPlayerEntity.class,
+                        player.getBoundingBox().inflate(256.0),
+                        entity -> entity.isAlive() && entity.getTags().contains(ownerTag))
+                .stream()
+                .min(Comparator.comparingDouble(player::distanceToSqr))
+                .orElse(null);
     }
 
     private static int spawn(CommandSourceStack source, String name) {
