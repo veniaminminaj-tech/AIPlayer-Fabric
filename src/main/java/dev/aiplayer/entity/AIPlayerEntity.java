@@ -1,6 +1,8 @@
 package dev.aiplayer.entity;
 
 import dev.aiplayer.AIPlayerConfig;
+import net.minecraft.core.BlockPos;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.SimpleContainer;
@@ -21,6 +23,7 @@ import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 
@@ -34,9 +37,12 @@ public final class AIPlayerEntity extends PathfinderMob {
     private static final double FOLLOW_STOP_DISTANCE_SQUARED = 6.25;
     private static final double ITEM_SEARCH_RADIUS = 10.0;
     private static final double ITEM_PICKUP_DISTANCE_SQUARED = 2.25;
+    private static final int LOG_SEARCH_RADIUS = 5;
+    private static final double LOG_REACH_DISTANCE_SQUARED = 4.0;
 
     // A player-sized inventory: 27 main slots. Hotbar/equipment UI will be added later.
     private final SimpleContainer inventory = new SimpleContainer(27);
+    private boolean gatherMode;
 
     public AIPlayerEntity(EntityType<? extends PathfinderMob> type, Level level) {
         super(type, level);
@@ -53,6 +59,15 @@ public final class AIPlayerEntity extends PathfinderMob {
         return inventory;
     }
 
+    public boolean isGatherMode() {
+        return gatherMode;
+    }
+
+    public boolean toggleGatherMode() {
+        gatherMode = !gatherMode;
+        return gatherMode;
+    }
+
     public static AttributeSupplier.Builder createAttributes() {
         return Mob.createMobAttributes()
                 .add(Attributes.MAX_HEALTH, 20.0)
@@ -66,23 +81,128 @@ public final class AIPlayerEntity extends PathfinderMob {
         goalSelector.addGoal(0, new FloatGoal(this));
         goalSelector.addGoal(1, new PanicGoal(this, 1.45));
         goalSelector.addGoal(2, new AvoidEntityGoal<>(this, Monster.class, 10.0F, 1.15, 1.45));
-        goalSelector.addGoal(3, new CollectItemsGoal(this, 1.05));
-        goalSelector.addGoal(4, new FollowOwnerGoal(this, 1.15));
-        goalSelector.addGoal(5, new WaterAvoidingRandomStrollGoal(this, 1.0));
-        goalSelector.addGoal(6, new LookAtPlayerGoal(this, Player.class, 8.0F));
-        goalSelector.addGoal(7, new RandomLookAroundGoal(this));
+        goalSelector.addGoal(3, new GatherLogsGoal(this, 1.0));
+        goalSelector.addGoal(4, new CollectItemsGoal(this, 1.05));
+        goalSelector.addGoal(5, new FollowOwnerGoal(this, 1.15));
+        goalSelector.addGoal(6, new WaterAvoidingRandomStrollGoal(this, 1.0));
+        goalSelector.addGoal(7, new LookAtPlayerGoal(this, Player.class, 8.0F));
+        goalSelector.addGoal(8, new RandomLookAroundGoal(this));
     }
 
     @Override
     protected void addAdditionalSaveData(ValueOutput output) {
         super.addAdditionalSaveData(output);
         inventory.storeAsItemList(output.list("Inventory", ItemStack.CODEC));
+        output.putBoolean("GatherMode", gatherMode);
     }
 
     @Override
     protected void readAdditionalSaveData(ValueInput input) {
         super.readAdditionalSaveData(input);
         inventory.fromItemList(input.listOrEmpty("Inventory", ItemStack.CODEC));
+        gatherMode = input.getBooleanOr("GatherMode", false);
+    }
+
+    /**
+     * Gathers only log blocks and only after the owner explicitly enables gather mode.
+     * It works one log at a time, checks inventory capacity, and never mines blocks
+     * that require a correct tool (the companion does not have a tool system yet).
+     */
+    private static final class GatherLogsGoal extends Goal {
+        private final AIPlayerEntity mob;
+        private final double speed;
+        private BlockPos target;
+        private int miningTicks;
+        private int ticksToMine;
+
+        private GatherLogsGoal(AIPlayerEntity mob, double speed) {
+            this.mob = mob;
+            this.speed = speed;
+            setFlags(EnumSet.of(Goal.Flag.MOVE));
+        }
+
+        @Override
+        public boolean canUse() {
+            if (!mob.gatherMode || mob.level().isClientSide()) return false;
+            target = findNearestLog();
+            return target != null;
+        }
+
+        @Override
+        public boolean canContinueToUse() {
+            return mob.gatherMode && target != null
+                    && mob.level().getBlockState(target).is(BlockTags.LOGS)
+                    && mob.distanceToSqr(target.getX() + 0.5, target.getY() + 0.5, target.getZ() + 0.5)
+                    <= 12.0 * 12.0;
+        }
+
+        @Override
+        public void start() {
+            miningTicks = 0;
+            BlockState state = mob.level().getBlockState(target);
+            float hardness = state.getDestroySpeed(mob.level(), target);
+            ticksToMine = Math.max(20, Math.min(100, (int) (hardness * 30.0F)));
+        }
+
+        @Override
+        public void tick() {
+            if (target == null) return;
+            BlockState state = mob.level().getBlockState(target);
+            if (!state.is(BlockTags.LOGS) || state.requiresCorrectToolForDrops()) {
+                stop();
+                return;
+            }
+
+            double distance = mob.distanceToSqr(
+                    target.getX() + 0.5, target.getY() + 0.5, target.getZ() + 0.5);
+            if (distance > LOG_REACH_DISTANCE_SQUARED) {
+                if (mob.tickCount % 10 == 0) {
+                    mob.getNavigation().moveTo(
+                            target.getX() + 0.5, target.getY(), target.getZ() + 0.5, speed);
+                }
+                return;
+            }
+
+            mob.getNavigation().stop();
+            miningTicks++;
+            if (mob.level() instanceof ServerLevel serverLevel) {
+                int stage = Math.min(9, miningTicks * 10 / ticksToMine);
+                serverLevel.destroyBlockProgress(mob.getId(), target, stage);
+                if (miningTicks >= ticksToMine) {
+                    serverLevel.destroyBlockProgress(mob.getId(), target, -1);
+                    serverLevel.destroyBlock(target, true, mob, 512);
+                    target = null;
+                }
+            }
+        }
+
+        @Override
+        public void stop() {
+            if (target != null && mob.level() instanceof ServerLevel serverLevel) {
+                serverLevel.destroyBlockProgress(mob.getId(), target, -1);
+            }
+            mob.getNavigation().stop();
+            target = null;
+            miningTicks = 0;
+            ticksToMine = 0;
+        }
+
+        private BlockPos findNearestLog() {
+            BlockPos origin = mob.blockPosition();
+            return BlockPos.betweenClosedStream(
+                            origin.offset(-LOG_SEARCH_RADIUS, -1, -LOG_SEARCH_RADIUS),
+                            origin.offset(LOG_SEARCH_RADIUS, 4, LOG_SEARCH_RADIUS))
+                    .filter(pos -> {
+                        BlockState state = mob.level().getBlockState(pos);
+                        if (!state.is(BlockTags.LOGS) || state.requiresCorrectToolForDrops()) return false;
+                        if (!mob.inventory.canAddItem(new ItemStack(state.getBlock().asItem()))) return false;
+                        return !mob.level().getBlockState(pos.below()).is(BlockTags.LOGS);
+                    })
+                    .min(Comparator.comparingDouble(pos -> mob.distanceToSqr(
+                            pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5)))
+                    .map(BlockPos::immutable)
+                    .orElse(null);
+        }
     }
 
     /**
