@@ -9,12 +9,8 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.phys.Vec3;
-
-import java.util.Comparator;
-import java.util.StringJoiner;
 
 public final class AIPlayerCommands {
     private AIPlayerCommands() {}
@@ -25,137 +21,12 @@ public final class AIPlayerCommands {
     }
 
     private static void registerCommands(CommandDispatcher<CommandSourceStack> dispatcher) {
-        dispatcher.register(Commands.literal("spawnai")
+        dispatcher.register(Commands.literal("aiplayerspawn")
                 .requires(Commands.hasPermission(Commands.LEVEL_ADMINS))
                 .executes(context -> spawn(context.getSource(), AIPlayerConfig.get().botName))
                 .then(Commands.argument("name", StringArgumentType.word())
                         .executes(context -> spawn(context.getSource(),
                                 StringArgumentType.getString(context, "name")))));
-        dispatcher.register(Commands.literal("aiclear")
-                .executes(context -> {
-                    var source = context.getSource();
-                    var player = source.getPlayer();
-                    if (player == null) {
-                        source.sendFailure(Component.literal("This command can only be used by a player."));
-                        return 0;
-                    }
-                    AIPlayerChat.clearMemory(player.getUUID());
-                    source.sendSuccess(() -> Component.literal("Your AI companion conversation memory was cleared."), false);
-                    return 1;
-                }));
-        dispatcher.register(Commands.literal("aiinventory")
-                .executes(context -> showInventory(context.getSource())));
-        dispatcher.register(Commands.literal("aigather")
-                .executes(context -> toggleGatherMode(context.getSource())));
-        dispatcher.register(Commands.literal("aibrain")
-                .executes(context -> showBrainStatus(context.getSource())));
-        dispatcher.register(Commands.literal("aipvp")
-                .then(Commands.literal("start")
-                        .executes(context -> setPvpTraining(context.getSource(), true)))
-                .then(Commands.literal("stop")
-                        .executes(context -> setPvpTraining(context.getSource(), false)))
-                .then(Commands.literal("difficulty")
-                        .then(Commands.literal("medium")
-                                .executes(context -> setPvpTraining(context.getSource(), true)))));
-    }
-
-
-    private static int setPvpTraining(CommandSourceStack source, boolean enabled) {
-        ServerPlayer player = source.getPlayer();
-        if (player == null) {
-            source.sendFailure(Component.literal("This command can only be used by a player."));
-            return 0;
-        }
-        AIPlayerEntity companion = findOwnedCompanion(player);
-        if (companion == null) {
-            source.sendFailure(Component.literal("Blocky was not found within 256 blocks."));
-            return 0;
-        }
-        companion.setPvpTrainingMode(enabled);
-        String message = enabled
-                ? "Blocky PvP training started — medium difficulty. Use /aipvp stop to end."
-                : "Blocky PvP training stopped.";
-        source.sendSuccess(() -> Component.literal(message), false);
-        return 1;
-    }
-
-    private static int showBrainStatus(CommandSourceStack source) {
-        ServerPlayer player = source.getPlayer();
-        if (player == null) {
-            source.sendFailure(Component.literal("This command can only be used by a player."));
-            return 0;
-        }
-        AIPlayerEntity companion = findOwnedCompanion(player);
-        if (companion == null) {
-            source.sendFailure(Component.literal("Blocky was not found within 256 blocks."));
-            return 0;
-        }
-        String status = "Blocky objective: " + companion.getBrainObjective()
-                + " | wood gathering: " + (companion.isGatherMode() ? "ON" : "OFF")
-                + " | PvP training: " + (companion.isPvpTrainingMode() ? "ON (medium)" : "OFF");
-        source.sendSuccess(() -> Component.literal(status), false);
-        return 1;
-    }
-
-    private static int showInventory(CommandSourceStack source) {
-        ServerPlayer player = source.getPlayer();
-        if (player == null) {
-            source.sendFailure(Component.literal("This command can only be used by a player."));
-            return 0;
-        }
-
-        AIPlayerEntity companion = findOwnedCompanion(player);
-        if (companion == null) {
-            source.sendFailure(Component.literal("Your companion was not found within 256 blocks."));
-            return 0;
-        }
-
-        StringJoiner items = new StringJoiner(", ");
-        int occupiedSlots = 0;
-        for (int slot = 0; slot < companion.getInventory().getContainerSize(); slot++) {
-            var stack = companion.getInventory().getItem(slot);
-            if (stack.isEmpty()) continue;
-            occupiedSlots++;
-            items.add(stack.getCount() + "x " + stack.getHoverName().getString());
-        }
-
-        final String inventoryText = occupiedSlots == 0
-                ? "Your companion's inventory is empty."
-                : "Companion inventory (" + occupiedSlots + "/27 slots): " + items;
-        source.sendSuccess(() -> Component.literal(inventoryText), false);
-        return 1;
-    }
-
-    private static int toggleGatherMode(CommandSourceStack source) {
-        ServerPlayer player = source.getPlayer();
-        if (player == null) {
-            source.sendFailure(Component.literal("This command can only be used by a player."));
-            return 0;
-        }
-
-        AIPlayerEntity companion = findOwnedCompanion(player);
-        if (companion == null) {
-            source.sendFailure(Component.literal("Your companion was not found within 256 blocks."));
-            return 0;
-        }
-
-        boolean enabled = companion.toggleGatherMode();
-        String message = enabled
-                ? "Log gathering enabled. Your companion will harvest nearby tree logs."
-                : "Log gathering disabled.";
-        source.sendSuccess(() -> Component.literal(message), false);
-        return 1;
-    }
-
-    private static AIPlayerEntity findOwnedCompanion(ServerPlayer player) {
-        String ownerTag = AIPlayerEntity.ownerTag(player.getUUID());
-        return player.level().getEntitiesOfClass(
-                        AIPlayerEntity.class,
-                        player.getBoundingBox().inflate(256.0),
-                        entity -> entity.isAlive() && entity.getTags().contains(ownerTag))
-                .stream()
-                .min(Comparator.comparingDouble(player::distanceToSqr))
-                .orElse(null);
     }
 
     private static int spawn(CommandSourceStack source, String name) {
@@ -166,7 +37,7 @@ public final class AIPlayerCommands {
             source.sendFailure(Component.literal("Could not create AI player."));
             return 0;
         }
-        String safeName = name == null || name.isBlank() ? "AI Player" : name.substring(0, Math.min(32, name.length()));
+        String safeName = name == null || name.isBlank() ? "Blocky" : name.substring(0, Math.min(32, name.length()));
         bot.setCustomName(Component.literal(safeName));
         bot.setCustomNameVisible(true);
         bot.setPos(pos.x, pos.y, pos.z);
