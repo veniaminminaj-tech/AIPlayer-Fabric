@@ -55,6 +55,15 @@ public final class AIPlayerConfig {
             AIPlayerMod.LOGGER.error("Could not read config/aiplayer.json; using defaults.", e);
             INSTANCE = new AIPlayerConfig();
         }
+        if (Files.notExists(FILE)) {
+            try {
+                Files.createDirectories(FILE.getParent());
+                Files.writeString(FILE, GSON.toJson(INSTANCE));
+                AIPlayerMod.LOGGER.info("Created default config at {}", FILE);
+            } catch (IOException e) {
+                AIPlayerMod.LOGGER.error("Could not create default config/aiplayer.json.", e);
+            }
+        }
         INSTANCE.apiKey = readApiKey();
     }
 
