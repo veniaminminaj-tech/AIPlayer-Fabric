@@ -42,7 +42,7 @@ public final class AIPlayerAutoSpawn {
         }
 
         String configuredName = AIPlayerConfig.get().botName;
-        String name = configuredName == null || configuredName.isBlank() ? "AI Player" : configuredName;
+        String name = configuredName == null || configuredName.isBlank() ? "Blocky" : configuredName;
         companion.setCustomName(Component.literal(name));
         companion.setCustomNameVisible(true);
         companion.addTag(ownerTag);
