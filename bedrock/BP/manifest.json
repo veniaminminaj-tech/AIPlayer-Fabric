@@ -1,0 +1,54 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Blocky Companion - Behavior Pack",
+    "description": "Bedrock companion behavior and chat controls.",
+    "uuid": "7e6d2f14-4a90-4a75-9b2c-8b9f4b6c0d11",
+    "version": [
+      0,
+      1,
+      0
+    ],
+    "min_engine_version": [
+      1,
+      21,
+      100
+    ]
+  },
+  "modules": [
+    {
+      "type": "data",
+      "uuid": "3f47a2c8-1d65-4a09-8d20-6f1b2c9e7a31",
+      "version": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "type": "script",
+      "language": "javascript",
+      "entry": "scripts/main.js",
+      "uuid": "5c18e7a4-9b32-4d60-a2f1-8e6c3b7d0a52",
+      "version": [
+        0,
+        1,
+        0
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "uuid": "2a9c5e71-8f34-4b6d-9c20-1e7a3f5b8d42",
+      "version": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "module_name": "@minecraft/server",
+      "version": "2.1.0"
+    }
+  ]
+}
