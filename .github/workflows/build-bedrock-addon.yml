@@ -37,6 +37,9 @@ jobs:
           print("Script smoke checks passed.")
           PY
 
+      - name: Validate JavaScript syntax
+        run: node --check bedrock/BP/scripts/main.js
+
       - name: Package behavior and resource packs
         run: |
           mkdir -p dist
