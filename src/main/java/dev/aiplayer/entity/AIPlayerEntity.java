@@ -26,6 +26,8 @@ import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
@@ -207,6 +209,7 @@ public final class AIPlayerEntity extends PathfinderMob {
                 ACTION=CRAFT_ITEM
                 ACTION=SERVICE_FURNACE
                 ACTION=STORE_EXCESS
+                ACTION=USE_ITEM SLOT=0..26
                 ACTION=FOLLOW_OWNER
                 ACTION=REST
                 Owner request: %s
@@ -222,6 +225,7 @@ public final class AIPlayerEntity extends PathfinderMob {
                 - If the owner explicitly asks for crafting, choose CRAFT_ITEM.
                 - If the owner asks to use, load, or collect from a furnace, choose SERVICE_FURNACE.
                 - If the owner asks to store surplus items in a chest, barrel, or compatible modded container, choose STORE_EXCESS.
+                - If the owner asks to activate or use a specific inventory item, choose USE_ITEM and include SLOT=n for the matching inventory slot (0 through 26), using the item registry ID shown in the inventory.
                 - Choose GATHER_WOOD only when logs exist and inventory has room.
                 - Choose FOLLOW_OWNER if the owner is far away or danger is nearby.
                 - Otherwise choose REST.
@@ -239,7 +243,16 @@ public final class AIPlayerEntity extends PathfinderMob {
                         return;
                     }
                     String decision = reply == null ? "" : reply.trim().toUpperCase(java.util.Locale.ROOT);
-                    if (decision.contains("ACTION=CRAFT_ITEM")) {
+                    if (decision.contains("ACTION=USE_ITEM")) {
+                        brainObjective = "USE_ITEM";
+                        gatherMode = false;
+                        int itemSlot = parseItemSlot(decision);
+                        String actionResult = useInventoryItem(serverLevel, itemSlot);
+                        AIPlayerMod.LOGGER.info("Blocky item-use result: {}", actionResult);
+                        Player taskOwner = findOwner(serverLevel);
+                        if (taskOwner != null) taskOwner.sendSystemMessage(Component.literal("[Blocky] " + actionResult));
+                        pendingUserRequest = "";
+                    } else if (decision.contains("ACTION=CRAFT_ITEM")) {
                         brainObjective = "CRAFT_ITEM";
                         gatherMode = false;
                         String actionResult = dev.aiplayer.BlockyCrafting.craftOne(inventory, serverLevel);
@@ -291,6 +304,49 @@ public final class AIPlayerEntity extends PathfinderMob {
             }
         }
         return null;
+    }
+
+    private int parseItemSlot(String decision) {
+        int marker = decision.indexOf("SLOT=");
+        if (marker < 0) return -1;
+        int start = marker + 5;
+        int end = start;
+        while (end < decision.length() && Character.isDigit(decision.charAt(end))) end++;
+        if (end == start) return -1;
+        try {
+            int slot = Integer.parseInt(decision.substring(start, end));
+            return slot >= 0 && slot < inventory.getContainerSize() ? slot : -1;
+        } catch (NumberFormatException ignored) {
+            return -1;
+        }
+    }
+
+    /** Invokes the item's normal Minecraft use hook, including hooks supplied by mods. */
+    private String useInventoryItem(ServerLevel serverLevel, int slot) {
+        if (slot < 0 || slot >= inventory.getContainerSize()) {
+            return "Не зміг визначити слот предмета. Попроси використати конкретний предмет з інвентаря.";
+        }
+        ItemStack storedStack = inventory.getItem(slot);
+        if (storedStack.isEmpty()) return "У вибраному слоті немає предмета.";
+
+        FakePlayer actor = createBlockyActor(serverLevel);
+        if (actor == null) return "Не вдалося створити ігровий контекст для використання предмета.";
+
+        actor.setPos(getX(), getY(), getZ());
+        actor.setYRot(getYRot());
+        actor.setItemInHand(InteractionHand.MAIN_HAND, storedStack.copy());
+        InteractionResult result = actor.gameMode.useItem(
+                actor, serverLevel, actor.getItemInHand(InteractionHand.MAIN_HAND), InteractionHand.MAIN_HAND);
+        ItemStack updatedStack = actor.getItemInHand(InteractionHand.MAIN_HAND).copy();
+        inventory.setItem(slot, updatedStack);
+        inventory.setChanged();
+
+        if (result.consumesAction()) {
+            return "Викликав стандартну дію предмета " + storedStack.getHoverName().getString()
+                    + ". Результат взаємодії: " + result + ".";
+        }
+        return "Предмет " + storedStack.getHoverName().getString()
+                + " не виконав дію при використанні в повітрі. Для нього може бути потрібна взаємодія з блоком або спеціальна інтеграція мода.";
     }
 
     private FakePlayer createBlockyActor(ServerLevel serverLevel) {
