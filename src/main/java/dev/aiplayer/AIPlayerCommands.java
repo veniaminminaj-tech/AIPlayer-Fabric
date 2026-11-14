@@ -9,8 +9,12 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.phys.Vec3;
+
+import java.util.Comparator;
+import java.util.StringJoiner;
 
 public final class AIPlayerCommands {
     private AIPlayerCommands() {}
@@ -39,6 +43,45 @@ public final class AIPlayerCommands {
                     source.sendSuccess(() -> Component.literal("Your AI companion conversation memory was cleared."), false);
                     return 1;
                 }));
+        dispatcher.register(Commands.literal("aiinventory")
+                .executes(context -> showInventory(context.getSource())));
+    }
+
+    private static int showInventory(CommandSourceStack source) {
+        ServerPlayer player = source.getPlayer();
+        if (player == null) {
+            source.sendFailure(Component.literal("This command can only be used by a player."));
+            return 0;
+        }
+
+        String ownerTag = AIPlayerEntity.ownerTag(player.getUUID());
+        AIPlayerEntity companion = player.level().getEntitiesOfClass(
+                        AIPlayerEntity.class,
+                        player.getBoundingBox().inflate(256.0),
+                        entity -> entity.isAlive() && entity.getTags().contains(ownerTag))
+                .stream()
+                .min(Comparator.comparingDouble(player::distanceToSqr))
+                .orElse(null);
+
+        if (companion == null) {
+            source.sendFailure(Component.literal("Your companion was not found within 256 blocks."));
+            return 0;
+        }
+
+        StringJoiner items = new StringJoiner(", ");
+        int occupiedSlots = 0;
+        for (int slot = 0; slot < companion.getInventory().getContainerSize(); slot++) {
+            var stack = companion.getInventory().getItem(slot);
+            if (stack.isEmpty()) continue;
+            occupiedSlots++;
+            items.add(stack.getCount() + "x " + stack.getHoverName().getString());
+        }
+
+        final String inventoryText = occupiedSlots == 0
+                ? "Your companion's inventory is empty."
+                : "Companion inventory (" + occupiedSlots + "/27 slots): " + items;
+        source.sendSuccess(() -> Component.literal(inventoryText), false);
+        return 1;
     }
 
     private static int spawn(CommandSourceStack source, String name) {
