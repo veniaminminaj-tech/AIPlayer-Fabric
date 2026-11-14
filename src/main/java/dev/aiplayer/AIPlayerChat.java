@@ -2,6 +2,7 @@ package dev.aiplayer;
 
 import dev.aiplayer.entity.AIPlayerEntity;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.core.BlockPos;
 import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.network.chat.Component;
@@ -110,6 +111,12 @@ public final class AIPlayerChat {
         if (containsAny(normalized, "скрафти", "зроби предмет", "створи предмет",
                 "craft item", "craft something", "make an item", "крафтни")) {
             return BlockyCrafting.craftOne(bot.getInventory(), level);
+        }
+        if (containsAny(normalized, "взаємодій з блоком", "попрацюй з пічкою", "завантаж піч",
+                "поклади в бочку", "взаємодій з контейнером", "interact with block",
+                "use nearby container", "use furnace", "use barrel")) {
+            return BlockyBlockInteraction.interactWithNearestContainer(
+                    bot.getInventory(), level, bot.blockPosition());
         }
         if (containsAny(normalized, "зупини пвп", "закінчи пвп", "досить битися",
                 "припини бій", "stop pvp", "stop fighting", "end fight", "стоп пвп")) {
