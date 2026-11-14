@@ -216,6 +216,8 @@ public final class AIPlayerEntity extends PathfinderMob {
                 Inventory: %s
                 Nearby logs: %d
                 Nearby hostile mobs: %d
+                Nearby compatible containers: %d
+                Nearby furnaces: %d
                 Rules:
                 - If the owner explicitly asks for crafting, choose CRAFT_ITEM.
                 - If the owner asks to use, load, or collect from a furnace, choose SERVICE_FURNACE.
