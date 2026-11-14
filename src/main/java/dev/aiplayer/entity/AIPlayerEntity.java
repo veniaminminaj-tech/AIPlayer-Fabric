@@ -53,6 +53,7 @@ public final class AIPlayerEntity extends PathfinderMob {
     private boolean plannerBusy;
     private int lastPlannerTick;
     private boolean pvpTrainingMode;
+    private String pendingUserRequest = "";
 
     public AIPlayerEntity(EntityType<? extends PathfinderMob> type, Level level) {
         super(type, level);
@@ -108,6 +109,7 @@ public final class AIPlayerEntity extends PathfinderMob {
         output.putBoolean("GatherMode", gatherMode);
         output.putString("BrainObjective", brainObjective);
         output.putBoolean("PvpTrainingMode", pvpTrainingMode);
+        output.putString("PendingUserRequest", pendingUserRequest);
     }
 
     @Override
@@ -117,6 +119,7 @@ public final class AIPlayerEntity extends PathfinderMob {
         gatherMode = input.getBooleanOr("GatherMode", false);
         brainObjective = input.getStringOr("BrainObjective", "FOLLOW_OWNER");
         pvpTrainingMode = input.getBooleanOr("PvpTrainingMode", false);
+        pendingUserRequest = input.getStringOr("PendingUserRequest", "");
     }
 
 
@@ -132,6 +135,15 @@ public final class AIPlayerEntity extends PathfinderMob {
 
     public String getBrainObjective() {
         return brainObjective;
+    }
+
+    /** Queues a natural-language task for the strategic planner. */
+    public void queueUserRequest(String request) {
+        pendingUserRequest = request == null ? "" : request.trim();
+        if (pendingUserRequest.length() > 400) {
+            pendingUserRequest = pendingUserRequest.substring(0, 400);
+        }
+        lastPlannerTick = tickCount - 200;
     }
 
     public boolean isPvpTrainingMode() {
@@ -172,23 +184,32 @@ public final class AIPlayerEntity extends PathfinderMob {
                 .count();
 
         String observation = """
-                You are the long-term planner for Blocky, an autonomous Minecraft survival companion.
-                Use a two-level agent design: you are the slow strategic planner; the mod handles movement and actions.
-                Choose exactly ONE action token, with no explanation:
+                You are the strategic planner for Blocky, an autonomous Minecraft survival companion.
+                Analyze the owner's request, the current world, health, inventory, nearby resources and nearby blocks.
+                Choose exactly ONE action token on the first line, with no explanation:
                 ACTION=GATHER_WOOD
+                ACTION=CRAFT_ITEM
+                ACTION=SERVICE_FURNACE
+                ACTION=STORE_EXCESS
                 ACTION=FOLLOW_OWNER
                 ACTION=REST
+                Owner request: %s
                 Current objective: %s
                 Owner: %s
                 Health: %.1f/%.1f
                 Inventory: %s
                 Nearby logs: %d
                 Nearby hostile mobs: %d
-                Rules: prioritize survival and useful progress; do not repeat a failed action endlessly.
-                Choose GATHER_WOOD only if nearby logs exist and inventory is not already full.
-                Choose FOLLOW_OWNER if the owner is far away or the area has threats.
-                Otherwise choose REST.
-                """.formatted(brainObjective, owner.getName().getString(), getHealth(),
+                Rules:
+                - If the owner explicitly asks for crafting, choose CRAFT_ITEM.
+                - If the owner asks to use, load, or collect from a furnace, choose SERVICE_FURNACE.
+                - If the owner asks to store surplus items in a chest, barrel, or compatible modded container, choose STORE_EXCESS.
+                - Choose GATHER_WOOD only when logs exist and inventory has room.
+                - Choose FOLLOW_OWNER if the owner is far away or danger is nearby.
+                - Otherwise choose REST.
+                - Never claim an action succeeded unless the executor reports success.
+                """.formatted(pendingUserRequest.isBlank() ? "No new request; continue useful survival behavior." : pendingUserRequest,
+                brainObjective, owner.getName().getString(), getHealth(),
                 getMaxHealth(), inventorySummary, nearbyLogs, nearbyHostiles);
 
         AIProviderClient.ask(observation).whenComplete((reply, error) ->
@@ -200,15 +221,32 @@ public final class AIPlayerEntity extends PathfinderMob {
                         return;
                     }
                     String decision = reply == null ? "" : reply.trim().toUpperCase(java.util.Locale.ROOT);
-                    if (decision.contains("ACTION=GATHER_WOOD")) {
+                    if (decision.contains("ACTION=CRAFT_ITEM")) {
+                        brainObjective = "CRAFT_ITEM";
+                        gatherMode = false;
+                        AIPlayerMod.LOGGER.info("Blocky crafting result: {}", dev.aiplayer.BlockyCrafting.craftOne(inventory, serverLevel));
+                        pendingUserRequest = "";
+                    } else if (decision.contains("ACTION=SERVICE_FURNACE")) {
+                        brainObjective = "SERVICE_FURNACE";
+                        gatherMode = false;
+                        AIPlayerMod.LOGGER.info("Blocky furnace result: {}", dev.aiplayer.BlockyBlockInteraction.serviceNearestFurnace(inventory, serverLevel, blockPosition()));
+                        pendingUserRequest = "";
+                    } else if (decision.contains("ACTION=STORE_EXCESS")) {
+                        brainObjective = "STORE_EXCESS";
+                        gatherMode = false;
+                        AIPlayerMod.LOGGER.info("Blocky storage result: {}", dev.aiplayer.BlockyBlockInteraction.storeExcessInNearestContainer(inventory, serverLevel, blockPosition()));
+                        pendingUserRequest = "";
+                    } else if (decision.contains("ACTION=GATHER_WOOD")) {
                         brainObjective = "GATHER_WOOD";
                         if (!gatherMode) toggleGatherMode();
                     } else if (decision.contains("ACTION=FOLLOW_OWNER")) {
                         brainObjective = "FOLLOW_OWNER";
                         gatherMode = false;
+                        pendingUserRequest = "";
                     } else if (decision.contains("ACTION=REST")) {
                         brainObjective = "REST";
                         gatherMode = false;
+                        pendingUserRequest = "";
                     } else {
                         AIPlayerMod.LOGGER.warn("Blocky planner returned an unknown action: {}", reply);
                     }
