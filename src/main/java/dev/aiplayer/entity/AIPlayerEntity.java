@@ -5,6 +5,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import net.fabricmc.fabric.api.entity.FakePlayer;
+import com.mojang.authlib.GameProfile;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.PathfinderMob;
@@ -104,6 +106,25 @@ public final class AIPlayerEntity extends PathfinderMob {
         gatherMode = input.getBooleanOr("GatherMode", false);
     }
 
+    private FakePlayer createBlockyActor(ServerLevel serverLevel) {
+        for (String tag : getTags()) {
+            if (!tag.startsWith(OWNER_TAG_PREFIX)) continue;
+            try {
+                UUID ownerId = UUID.fromString(tag.substring(OWNER_TAG_PREFIX.length()));
+                Player owner = serverLevel.getPlayerByUUID(ownerId);
+                String ownerName = owner == null ? "Player" : owner.getName().getString();
+                String profileName = "[Blocky]";
+                FakePlayer actor = FakePlayer.get(serverLevel, new GameProfile(ownerId, profileName));
+                actor.setPos(getX(), getY(), getZ());
+                actor.setYRot(getYRot());
+                return actor;
+            } catch (IllegalArgumentException ignored) {
+                // Ignore malformed owner tags.
+            }
+        }
+        return null;
+    }
+
     private static final class GatherLogsGoal extends Goal {
         private final AIPlayerEntity mob;
         private final double speed;
@@ -166,7 +187,12 @@ public final class AIPlayerEntity extends PathfinderMob {
                 serverLevel.destroyBlockProgress(mob.getId(), target, stage);
                 if (miningTicks >= ticksToMine) {
                     serverLevel.destroyBlockProgress(mob.getId(), target, -1);
-                    serverLevel.destroyBlock(target, true, mob, 512);
+                    FakePlayer blockyPlayer = createBlockyActor(serverLevel);
+                    if (blockyPlayer != null) {
+                        blockyPlayer.setPos(mob.getX(), mob.getY(), mob.getZ());
+                        blockyPlayer.setYRot(mob.getYRot());
+                        blockyPlayer.gameMode.destroyBlock(target);
+                    }
                     target = null;
                 }
             }
