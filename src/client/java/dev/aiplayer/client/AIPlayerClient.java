@@ -17,7 +17,13 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
 public final class AIPlayerClient implements ClientModInitializer {
+    public enum ConnectionMode { GHOST, FULL_MOD }
+    private static volatile ConnectionMode connectionMode = ConnectionMode.GHOST;
     private static KeyMapping openSettings;
+
+    public static ConnectionMode getConnectionMode() {
+        return connectionMode;
+    }
 
     @Override
     public void onInitializeClient() {
