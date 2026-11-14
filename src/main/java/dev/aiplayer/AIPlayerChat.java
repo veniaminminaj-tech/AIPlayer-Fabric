@@ -38,7 +38,7 @@ public final class AIPlayerChat {
             String rawText = message.signedContent();
             AIPlayerConfig config = AIPlayerConfig.get();
             String trigger = config.botName == null || config.botName.isBlank()
-                    ? "AI Player" : config.botName.trim();
+                    ? "Blocky" : config.botName.trim();
             String promptText = extractPrompt(rawText, trigger);
             if (promptText == null || promptText.isBlank()) return;
 
