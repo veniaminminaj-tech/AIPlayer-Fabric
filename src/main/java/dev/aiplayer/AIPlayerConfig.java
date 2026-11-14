@@ -21,7 +21,7 @@ public final class AIPlayerConfig {
     public transient String apiKey = "";
     public String endpoint = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
     public String skin = "steve";
-    public String botName = "AI Player";
+    public String botName = "Blocky";
     public String personality = "Friendly, curious, helpful, and knowledgeable about Minecraft.";
     public int memoryMessages = 8;
 
@@ -44,7 +44,7 @@ public final class AIPlayerConfig {
                     if (loaded.endpoint == null || loaded.endpoint.contains("localhost")) loaded.endpoint = defaultEndpoint(loaded.provider);
                     loaded.apiKey = readApiKey();
                     if (loaded.skin == null) loaded.skin = "steve";
-                    if (loaded.botName == null || loaded.botName.isBlank()) loaded.botName = "AI Player";
+                    if (loaded.botName == null || loaded.botName.isBlank() || loaded.botName.equalsIgnoreCase("AI Player")) loaded.botName = "Blocky";
                     if (loaded.personality == null || loaded.personality.isBlank())
                         loaded.personality = "Friendly, curious, helpful, and knowledgeable about Minecraft.";
                     loaded.memoryMessages = Math.max(0, Math.min(20, loaded.memoryMessages));
