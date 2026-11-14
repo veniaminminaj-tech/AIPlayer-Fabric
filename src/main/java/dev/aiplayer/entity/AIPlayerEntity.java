@@ -30,6 +30,9 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
@@ -334,19 +337,33 @@ public final class AIPlayerEntity extends PathfinderMob {
 
         actor.setPos(getX(), getY(), getZ());
         actor.setYRot(getYRot());
+        actor.setXRot(getXRot());
         actor.setItemInHand(InteractionHand.MAIN_HAND, storedStack.copy());
         InteractionResult result = actor.gameMode.useItem(
                 actor, serverLevel, actor.getItemInHand(InteractionHand.MAIN_HAND), InteractionHand.MAIN_HAND);
+
+        if (!result.consumesAction()) {
+            var eye = actor.getEyePosition();
+            var end = eye.add(actor.getLookAngle().scale(4.5));
+            HitResult ray = serverLevel.clip(new ClipContext(
+                    eye, end, ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, actor));
+            if (ray instanceof BlockHitResult blockHit && ray.getType() == HitResult.Type.BLOCK) {
+                result = actor.gameMode.useItemOn(
+                        actor, serverLevel, actor.getItemInHand(InteractionHand.MAIN_HAND),
+                        InteractionHand.MAIN_HAND, blockHit);
+            }
+        }
+
         ItemStack updatedStack = actor.getItemInHand(InteractionHand.MAIN_HAND).copy();
         inventory.setItem(slot, updatedStack);
         inventory.setChanged();
 
         if (result.consumesAction()) {
             return "Викликав стандартну дію предмета " + storedStack.getHoverName().getString()
-                    + ". Результат взаємодії: " + result + ".";
+                    + " (у повітрі або по блоку). Результат взаємодії: " + result + ".";
         }
         return "Предмет " + storedStack.getHoverName().getString()
-                + " не виконав дію при використанні в повітрі. Для нього може бути потрібна взаємодія з блоком або спеціальна інтеграція мода.";
+                + " не виконав дію. Можливо, йому потрібен інший контекст або спеціальна інтеграція мода.";
     }
 
     private FakePlayer createBlockyActor(ServerLevel serverLevel) {
