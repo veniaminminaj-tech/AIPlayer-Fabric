@@ -1,6 +1,6 @@
 package dev.aiplayer;
 
-import dev.aiplayer.entity.AIPlayerEntity;
+import dev.aiplayer.entity.AIPlayerEntity;\nimport net.minecraft.server.level.ServerLevel;
 import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.network.chat.Component;
@@ -55,7 +55,7 @@ public final class AIPlayerChat {
                 return;
             }
 
-            String intentReply = handleSimpleIntent(promptText, bot);
+            String intentReply = handleSimpleIntent(promptText, bot, (ServerLevel) sender.level());
             if (intentReply != null) {
                 String name = bot.getName().getString();
                 sender.sendSystemMessage(Component.literal("[" + name + "] " + intentReply));
@@ -103,9 +103,13 @@ public final class AIPlayerChat {
         });
     }
 
-    private static String handleSimpleIntent(String text, AIPlayerEntity bot) {
+    private static String handleSimpleIntent(String text, AIPlayerEntity bot, ServerLevel level) {
         String normalized = text.toLowerCase(Locale.ROOT);
 
+        if (containsAny(normalized, "скрафти", "зроби предмет", "створи предмет",
+                "craft item", "craft something", "make an item", "крафтни")) {
+            return BlockyCrafting.craftOne(bot.getInventory(), level);
+        }
         if (containsAny(normalized, "зупини пвп", "закінчи пвп", "досить битися",
                 "припини бій", "stop pvp", "stop fighting", "end fight", "стоп пвп")) {
             if (bot.isPvpTrainingMode()) bot.setPvpTrainingMode(false);
