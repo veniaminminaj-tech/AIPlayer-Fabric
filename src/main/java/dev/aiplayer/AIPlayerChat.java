@@ -105,6 +105,23 @@ public final class AIPlayerChat {
 
     private static String handleSimpleIntent(String text, AIPlayerEntity bot) {
         String normalized = text.toLowerCase(Locale.ROOT);
+
+        if (containsAny(normalized, "зупини пвп", "закінчи пвп", "досить битися",
+                "припини бій", "stop pvp", "stop fighting", "end fight", "стоп пвп")) {
+            if (bot.isPvpTrainingMode()) bot.setPvpTrainingMode(false);
+            return "Добре, тренувальний бій зупинено.";
+        }
+        if (containsAny(normalized, "давай пвп", "починай пвп", "бийся зі мною",
+                "тренувальний бій", "починай бій", "потренуймося битися",
+                "start pvp", "fight me", "let's fight", "pvp training")) {
+            if (!bot.isPvpTrainingMode()) bot.setPvpTrainingMode(true);
+            return "Готовий! Починаємо PvP на середній складності. Напиши «Blocky, зупини PvP», щоб завершити.";
+        }
+        if (containsAny(normalized, "яка складність", "яка в тебе складність", "what difficulty")) {
+            return bot.isPvpTrainingMode()
+                    ? "Зараз тренувальний PvP увімкнений на середній складності."
+                    : "Зараз PvP вимкнений. Скажи «Blocky, давай PvP», щоб почати на середній складності.";
+        }
         if (containsAny(normalized, "добудь дерево", "збирай деревину", "рубaй дерево",
                 "chop wood", "gather wood", "collect logs", "добывай дерево", "собирай древесину")) {
             if (!bot.isGatherMode()) bot.toggleGatherMode();
