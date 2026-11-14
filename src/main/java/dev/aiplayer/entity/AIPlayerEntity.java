@@ -290,7 +290,9 @@ public final class AIPlayerEntity extends PathfinderMob {
             if (mob.distanceToSqr(owner) <= 3.2 * 3.2
                     && attackCooldown <= 0 && mob.hasLineOfSight(owner)) {
                 mob.swing(net.minecraft.world.InteractionHand.MAIN_HAND);
-                mob.doHurtTarget(owner);
+                if (mob.level() instanceof ServerLevel serverLevel) {
+                    mob.doHurtTarget(serverLevel, owner);
+                }
                 // Medium difficulty: a readable reaction window, not instant attacks.
                 attackCooldown = 18 + mob.getRandom().nextInt(9);
             }
