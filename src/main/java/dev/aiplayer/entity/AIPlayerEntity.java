@@ -187,7 +187,7 @@ public final class AIPlayerEntity extends PathfinderMob {
                 serverLevel.destroyBlockProgress(mob.getId(), target, stage);
                 if (miningTicks >= ticksToMine) {
                     serverLevel.destroyBlockProgress(mob.getId(), target, -1);
-                    FakePlayer blockyPlayer = createBlockyActor(serverLevel);
+                    FakePlayer blockyPlayer = mob.createBlockyActor(serverLevel);
                     if (blockyPlayer != null) {
                         blockyPlayer.setPos(mob.getX(), mob.getY(), mob.getZ());
                         blockyPlayer.setYRot(mob.getYRot());
