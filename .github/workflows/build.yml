@@ -2,7 +2,7 @@ name: Build AIPlayer Fabric
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "feature/blocky-player-prototype" ]
   pull_request:
     branches: [ "main" ]
   workflow_dispatch:
