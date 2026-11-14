@@ -47,6 +47,26 @@ public final class AIPlayerCommands {
                 .executes(context -> showInventory(context.getSource())));
         dispatcher.register(Commands.literal("aigather")
                 .executes(context -> toggleGatherMode(context.getSource())));
+        dispatcher.register(Commands.literal("aibrain")
+                .executes(context -> showBrainStatus(context.getSource())));
+    }
+
+
+    private static int showBrainStatus(CommandSourceStack source) {
+        ServerPlayer player = source.getPlayer();
+        if (player == null) {
+            source.sendFailure(Component.literal("This command can only be used by a player."));
+            return 0;
+        }
+        AIPlayerEntity companion = findOwnedCompanion(player);
+        if (companion == null) {
+            source.sendFailure(Component.literal("Blocky was not found within 256 blocks."));
+            return 0;
+        }
+        String status = "Blocky objective: " + companion.getBrainObjective()
+                + " | wood gathering: " + (companion.isGatherMode() ? "ON" : "OFF");
+        source.sendSuccess(() -> Component.literal(status), false);
+        return 1;
     }
 
     private static int showInventory(CommandSourceStack source) {
