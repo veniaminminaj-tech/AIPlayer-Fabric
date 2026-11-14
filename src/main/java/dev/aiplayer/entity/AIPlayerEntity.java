@@ -171,7 +171,10 @@ public final class AIPlayerEntity extends PathfinderMob {
             ItemStack stack = inventory.getItem(slot);
             if (stack.isEmpty()) continue;
             if (!inventorySummary.isEmpty()) inventorySummary.append(", ");
-            inventorySummary.append(stack.getCount()).append("x ").append(stack.getHoverName().getString());
+            inventorySummary.append(stack.getCount()).append("x ")
+                    .append(stack.getHoverName().getString()).append(" [")
+                    .append(net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()))
+                    .append("]");
         }
         if (inventorySummary.isEmpty()) inventorySummary.append("empty");
 
@@ -181,6 +184,19 @@ public final class AIPlayerEntity extends PathfinderMob {
                         blockPosition().offset(-8, -2, -8),
                         blockPosition().offset(8, 5, 8))
                 .filter(pos -> serverLevel.getBlockState(pos).is(BlockTags.LOGS))
+                .count();
+
+        long nearbyContainers = BlockPos.betweenClosedStream(
+                        blockPosition().offset(-8, -2, -8),
+                        blockPosition().offset(8, 5, 8))
+                .map(serverLevel::getBlockEntity)
+                .filter(entity -> entity instanceof net.minecraft.world.Container)
+                .count();
+        long nearbyFurnaces = BlockPos.betweenClosedStream(
+                        blockPosition().offset(-8, -2, -8),
+                        blockPosition().offset(8, 5, 8))
+                .map(serverLevel::getBlockEntity)
+                .filter(entity -> entity instanceof net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity)
                 .count();
 
         String observation = """
@@ -210,7 +226,7 @@ public final class AIPlayerEntity extends PathfinderMob {
                 - Never claim an action succeeded unless the executor reports success.
                 """.formatted(pendingUserRequest.isBlank() ? "No new request; continue useful survival behavior." : pendingUserRequest,
                 brainObjective, owner.getName().getString(), getHealth(),
-                getMaxHealth(), inventorySummary, nearbyLogs, nearbyHostiles);
+                getMaxHealth(), inventorySummary, nearbyLogs, nearbyHostiles, nearbyContainers, nearbyFurnaces);
 
         AIProviderClient.ask(observation).whenComplete((reply, error) ->
                 serverLevel.getServer().execute(() -> {
