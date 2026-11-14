@@ -39,8 +39,9 @@ public final class AIPlayerEntity extends PathfinderMob {
     private static final double ITEM_PICKUP_DISTANCE_SQUARED = 2.25;
     private static final int LOG_SEARCH_RADIUS = 5;
     private static final double LOG_REACH_DISTANCE_SQUARED = 4.0;
+    // Four chunks correspond to 64 blocks in each horizontal direction.
+    private static final float AI_VIEW_RANGE = 64.0F;
 
-    // A player-sized inventory: 27 main slots. Hotbar/equipment UI will be added later.
     private final SimpleContainer inventory = new SimpleContainer(27);
     private boolean gatherMode;
 
@@ -85,7 +86,7 @@ public final class AIPlayerEntity extends PathfinderMob {
         goalSelector.addGoal(4, new CollectItemsGoal(this, 1.05));
         goalSelector.addGoal(5, new FollowOwnerGoal(this, 1.15));
         goalSelector.addGoal(6, new WaterAvoidingRandomStrollGoal(this, 1.0));
-        goalSelector.addGoal(7, new LookAtPlayerGoal(this, Player.class, 8.0F));
+        goalSelector.addGoal(7, new LookAtPlayerGoal(this, Player.class, AI_VIEW_RANGE));
         goalSelector.addGoal(8, new RandomLookAroundGoal(this));
     }
 
@@ -103,11 +104,6 @@ public final class AIPlayerEntity extends PathfinderMob {
         gatherMode = input.getBooleanOr("GatherMode", false);
     }
 
-    /**
-     * Gathers only log blocks and only after the owner explicitly enables gather mode.
-     * It works one log at a time, checks inventory capacity, and never mines blocks
-     * that require a correct tool (the companion does not have a tool system yet).
-     */
     private static final class GatherLogsGoal extends Goal {
         private final AIPlayerEntity mob;
         private final double speed;
@@ -205,10 +201,6 @@ public final class AIPlayerEntity extends PathfinderMob {
         }
     }
 
-    /**
-     * Collects nearby dropped items into the companion's own persistent inventory.
-     * It does not take items directly from the owner or other players.
-     */
     private static final class CollectItemsGoal extends Goal {
         private final AIPlayerEntity mob;
         private final double speed;
@@ -271,10 +263,6 @@ public final class AIPlayerEntity extends PathfinderMob {
         }
     }
 
-    /**
-     * Follows only the player who owns this companion. It deliberately does not
-     * fall back to the nearest player, which could make companions follow strangers.
-     */
     private static final class FollowOwnerGoal extends Goal {
         private final AIPlayerEntity mob;
         private final double speed;
@@ -302,7 +290,6 @@ public final class AIPlayerEntity extends PathfinderMob {
 
         @Override
         public void tick() {
-            // Re-path periodically instead of recalculating the route every game tick.
             if (owner != null && mob.tickCount % 10 == 0) {
                 mob.getNavigation().moveTo(owner, speed);
             }
