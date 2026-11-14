@@ -1,0 +1,56 @@
+name: Build Bedrock Add-On
+
+on:
+  push:
+    branches:
+      - bedrock-addon-prototype
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate pack manifests and entity JSON
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          files = [
+              Path("bedrock/BP/manifest.json"),
+              Path("bedrock/BP/entities/companion.json"),
+              Path("bedrock/RP/manifest.json"),
+              Path("bedrock/RP/entity/companion.entity.json"),
+          ]
+          for path in files:
+              json.loads(path.read_text(encoding="utf-8"))
+              print(f"Valid JSON: {path}")
+          source = Path("bedrock/BP/scripts/main.js").read_text(encoding="utf-8")
+          assert "blocky:aiplayerspawn" in source
+          assert "world.afterEvents.chatSend" in source
+          print("Script smoke checks passed.")
+          PY
+
+      - name: Package behavior and resource packs
+        run: |
+          mkdir -p dist
+          cd bedrock/BP
+          zip -qr ../../dist/Blocky-Behavior.mcpack .
+          cd ../RP
+          zip -qr ../../dist/Blocky-Resources.mcpack .
+          cd ../../dist
+          zip -q Blocky-Bedrock.mcaddon Blocky-Behavior.mcpack Blocky-Resources.mcpack
+          ls -lh Blocky-Bedrock.mcaddon
+
+      - name: Upload MCAddon
+        uses: actions/upload-artifact@v4
+        with:
+          name: Blocky-Bedrock-mcaddon
+          path: dist/Blocky-Bedrock.mcaddon
+          if-no-files-found: error
