@@ -21,7 +21,9 @@ public final class AIPlayerRenderer extends HumanoidMobRenderer<AIPlayerEntity, 
     private static final Identifier STEVE = Identifier.withDefaultNamespace("textures/entity/player/wide/steve.png");
     private static final Identifier ALEX = Identifier.withDefaultNamespace("textures/entity/player/slim/alex.png");
     private static final Identifier CUSTOM = Identifier.fromNamespaceAndPath("aiplayer", "textures/custom_player_skin");
-    private static boolean customSkinLoaded;
+    private static long lastSkinModified = Long.MIN_VALUE;
+    private static long lastSkinSize = -1L;
+    private static boolean customSkinAvailable;
 
     public AIPlayerRenderer(EntityRendererProvider.Context context) {
         super(context, new HumanoidModel<>(context.bakeLayer(ModelLayers.PLAYER)), 0.5F);
@@ -40,24 +42,40 @@ public final class AIPlayerRenderer extends HumanoidMobRenderer<AIPlayerEntity, 
     }
 
     private static Identifier loadCustomSkin() {
-        if (customSkinLoaded) {
-            TextureManager manager = Minecraft.getInstance().getTextureManager();
-            return manager.getTexture(CUSTOM) == null ? null : CUSTOM;
-        }
-        customSkinLoaded = true;
         Path skinPath = AIPlayerConfig.SKIN_FILE;
-        if (!Files.isRegularFile(skinPath)) return null;
-        try (InputStream input = Files.newInputStream(skinPath)) {
-            NativeImage image = NativeImage.read(input);
-            if (image.getWidth() != 64 || image.getHeight() != 64) {
-                image.close();
-                AIPlayerModLog.warn("Custom skin must be a 64x64 PNG: " + skinPath);
-                return null;
+        if (!Files.isRegularFile(skinPath)) {
+            lastSkinModified = Long.MIN_VALUE;
+            lastSkinSize = -1L;
+            customSkinAvailable = false;
+            return null;
+        }
+
+        try {
+            long modified = Files.getLastModifiedTime(skinPath).toMillis();
+            long size = Files.size(skinPath);
+            if (modified == lastSkinModified && size == lastSkinSize) {
+                return customSkinAvailable ? CUSTOM : null;
             }
-            DynamicTexture texture = new DynamicTexture(() -> "AI Player custom skin", image);
-            Minecraft.getInstance().getTextureManager().register(CUSTOM, texture);
-            return CUSTOM;
+
+            lastSkinModified = modified;
+            lastSkinSize = size;
+            try (InputStream input = Files.newInputStream(skinPath)) {
+                NativeImage image = NativeImage.read(input);
+                if (image.getWidth() != 64 || image.getHeight() != 64) {
+                    image.close();
+                    customSkinAvailable = false;
+                    AIPlayerModLog.warn("Custom skin must be a 64x64 PNG: " + skinPath);
+                    return null;
+                }
+
+                DynamicTexture texture = new DynamicTexture(() -> "AI Player custom skin", image);
+                Minecraft.getInstance().getTextureManager().register(CUSTOM, texture);
+                customSkinAvailable = true;
+                AIPlayerMod.LOGGER.info("Loaded custom Blocky skin from {}", skinPath);
+                return CUSTOM;
+            }
         } catch (Exception e) {
+            customSkinAvailable = false;
             AIPlayerModLog.warn("Could not load custom skin PNG: " + e.getMessage());
             return null;
         }
