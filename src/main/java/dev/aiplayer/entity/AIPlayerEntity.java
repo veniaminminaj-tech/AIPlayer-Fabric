@@ -10,6 +10,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.fabricmc.fabric.api.entity.FakePlayer;
 import com.mojang.authlib.GameProfile;
 import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.Mob;
