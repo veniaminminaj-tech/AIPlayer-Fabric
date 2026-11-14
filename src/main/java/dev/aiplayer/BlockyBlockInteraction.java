@@ -1,7 +1,6 @@
 package dev.aiplayer;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.BlockPos.MutableBlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.Container;
@@ -13,76 +12,110 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import java.util.Comparator;
 
 /**
- * Moves items between Blocky's inventory and nearby vanilla or modded block entities
- * that expose the standard Minecraft Container interface.
+ * Safe, generic inventory interaction for vanilla and modded block entities
+ * that expose Minecraft's standard Container interface.
  */
 public final class BlockyBlockInteraction {
     private static final int SEARCH_RADIUS = 5;
 
     private BlockyBlockInteraction() {}
 
-    public static String interactWithNearestContainer(SimpleContainer inventory,
-                                                       ServerLevel level,
-                                                       BlockPos origin) {
-        BlockEntity target = BlockPos.betweenClosedStream(
+    public static String serviceNearestFurnace(SimpleContainer inventory,
+                                                ServerLevel level,
+                                                BlockPos origin) {
+        AbstractFurnaceBlockEntity furnace = BlockPos.betweenClosedStream(
                         origin.offset(-SEARCH_RADIUS, -2, -SEARCH_RADIUS),
                         origin.offset(SEARCH_RADIUS, 2, SEARCH_RADIUS))
-                .map(pos -> level.getBlockEntity(pos))
-                .filter(entity -> entity instanceof Container)
+                .map(level::getBlockEntity)
+                .filter(entity -> entity instanceof AbstractFurnaceBlockEntity)
+                .map(entity -> (AbstractFurnaceBlockEntity) entity)
                 .min(Comparator.comparingDouble(entity ->
                         entity.getBlockPos().distToCenterSqr(origin.getX() + 0.5,
                                 origin.getY() + 0.5, origin.getZ() + 0.5)))
                 .orElse(null);
 
-        if (target == null) {
-            return "Поруч не знайшов пічку, бочку чи інший блок-контейнер.";
+        if (furnace == null) return "Поруч не знайшов пічку.";
+
+        int taken = moveSlotToInventory(furnace, 2, inventory);
+        int fuelAdded = 0;
+
+        // Only move items recognized by the vanilla furnace-fuel tag.
+        // Input items are deliberately left untouched until recipe-aware smelting is added.
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+            ItemStack stack = inventory.getItem(slot);
+            if (stack.isEmpty() || !stack.is(ItemTags.FURNACE_FUELS)) continue;
+            fuelAdded += insertIntoSlot(inventory, slot, furnace, 1);
+            if (fuelAdded > 0) break;
         }
 
-        Container container = (Container) target;
-        int movedIn = 0;
-        int movedOut = 0;
+        furnace.setChanged();
+        if (taken == 0 && fuelAdded == 0) {
+            return "Знайшов пічку, але немає готового результату для забирання або палива для завантаження.";
+        }
+        return "Пічка обслужена: забрав " + taken + " предметів і додав " + fuelAdded + " одиниць палива.";
+    }
 
-        if (target instanceof AbstractFurnaceBlockEntity) {
-            // Furnace-like blocks use the conventional input/fuel/output slots.
-            movedOut += moveSlotToInventory(container, 2, inventory);
-            for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
-                ItemStack stack = inventory.getItem(slot);
-                if (stack.isEmpty()) continue;
-                int destination = stack.is(ItemTags.FURNACE_FUELS) ? 1 : 0;
-                movedIn += moveInventoryStack(inventory, slot, container, destination);
-            }
-        } else {
-            // Barrels, chests and modded containers implementing Container.
-            for (int source = 0; source < inventory.getContainerSize(); source++) {
-                ItemStack stack = inventory.getItem(source);
-                if (stack.isEmpty()) continue;
-                for (int destination = 0; destination < container.getContainerSize()
-                        && !stack.isEmpty(); destination++) {
-                    movedIn += insertIntoSlot(inventory, source, container, destination);
-                }
-            }
-            for (int slot = 0; slot < container.getContainerSize(); slot++) {
-                movedOut += moveSlotToInventory(container, slot, inventory);
+    /**
+     * Stores only surplus: at least one item from every stack stays with Blocky.
+     * Works with vanilla and modded containers implementing Container.
+     */
+    public static String storeExcessInNearestContainer(SimpleContainer inventory,
+                                                       ServerLevel level,
+                                                       BlockPos origin) {
+        BlockEntity target = BlockPos.betweenClosedStream(
+                        origin.offset(-SEARCH_RADIUS, -2, -SEARCH_RADIUS),
+                        origin.offset(SEARCH_RADIUS, 2, SEARCH_RADIUS))
+                .map(level::getBlockEntity)
+                .filter(entity -> entity instanceof Container
+                        && !(entity instanceof AbstractFurnaceBlockEntity))
+                .min(Comparator.comparingDouble(entity ->
+                        entity.getBlockPos().distToCenterSqr(origin.getX() + 0.5,
+                                origin.getY() + 0.5, origin.getZ() + 0.5)))
+                .orElse(null);
+
+        if (target == null) return "Поруч не знайшов сумісну скриню, бочку або модовий контейнер.";
+
+        Container container = (Container) target;
+        int moved = 0;
+        for (int sourceSlot = 0; sourceSlot < inventory.getContainerSize(); sourceSlot++) {
+            ItemStack stack = inventory.getItem(sourceSlot);
+            if (stack.isEmpty() || stack.getCount() <= 1) continue;
+
+            // Keep one unit in Blocky's inventory; store only the surplus.
+            int surplus = stack.getCount() - 1;
+            for (int destinationSlot = 0;
+                 destinationSlot < container.getContainerSize() && surplus > 0;
+                 destinationSlot++) {
+                moved += insertAmount(inventory, sourceSlot, container, destinationSlot, surplus);
+                ItemStack updated = inventory.getItem(sourceSlot);
+                surplus = updated.isEmpty() ? 0 : updated.getCount() - 1;
             }
         }
 
         container.setChanged();
-        if (movedIn == 0 && movedOut == 0) {
-            return "Знайшов блок-контейнер, але зараз нічого не вдалося перемістити.";
-        }
-        return "Готово. Перемістив у блок: " + movedIn
-                + " предметів, забрав до інвентаря: " + movedOut + ".";
+        return moved == 0
+                ? "Знайшов контейнер, але зайвих предметів для безпечного зберігання немає."
+                : "Зберіг у контейнері " + moved + " зайвих предметів; по одному залишив у своєму інвентарі.";
     }
 
-    private static int moveInventoryStack(SimpleContainer source, int sourceSlot,
-                                          Container destination, int destinationSlot) {
-        return insertIntoSlot(source, sourceSlot, destination, destinationSlot);
+    /** Backwards-compatible entry point; no longer empties containers blindly. */
+    public static String interactWithNearestContainer(SimpleContainer inventory,
+                                                       ServerLevel level,
+                                                       BlockPos origin) {
+        return storeExcessInNearestContainer(inventory, level, origin);
     }
 
     private static int insertIntoSlot(SimpleContainer source, int sourceSlot,
                                       Container destination, int destinationSlot) {
+        ItemStack stack = source.getItem(sourceSlot);
+        return insertAmount(source, sourceSlot, destination, destinationSlot, stack.getCount());
+    }
+
+    private static int insertAmount(SimpleContainer source, int sourceSlot,
+                                    Container destination, int destinationSlot, int requested) {
         ItemStack sourceStack = source.getItem(sourceSlot);
-        if (sourceStack.isEmpty() || !destination.canPlaceItem(destinationSlot, sourceStack)) return 0;
+        if (sourceStack.isEmpty() || requested <= 0
+                || !destination.canPlaceItem(destinationSlot, sourceStack)) return 0;
 
         ItemStack targetStack = destination.getItem(destinationSlot);
         if (!targetStack.isEmpty()
@@ -91,7 +124,7 @@ public final class BlockyBlockInteraction {
         int capacity = targetStack.isEmpty()
                 ? Math.min(sourceStack.getMaxStackSize(), destination.getMaxStackSize())
                 : Math.min(targetStack.getMaxStackSize(), destination.getMaxStackSize()) - targetStack.getCount();
-        int amount = Math.min(sourceStack.getCount(), Math.max(0, capacity));
+        int amount = Math.min(Math.min(sourceStack.getCount(), requested), Math.max(0, capacity));
         if (amount <= 0) return 0;
 
         if (targetStack.isEmpty()) {
@@ -102,10 +135,11 @@ public final class BlockyBlockInteraction {
             targetStack.grow(amount);
             destination.setItem(destinationSlot, targetStack);
         }
+
         sourceStack.shrink(amount);
         if (sourceStack.isEmpty()) source.setItem(sourceSlot, ItemStack.EMPTY);
-        destination.setChanged();
         source.setChanged();
+        destination.setChanged();
         return amount;
     }
 
