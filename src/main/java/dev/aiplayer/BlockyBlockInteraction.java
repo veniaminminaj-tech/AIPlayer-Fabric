@@ -2,7 +2,6 @@ package dev.aiplayer;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.tags.ItemTags;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.item.ItemStack;
@@ -43,7 +42,7 @@ public final class BlockyBlockInteraction {
         // Input items are deliberately left untouched until recipe-aware smelting is added.
         for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
             ItemStack stack = inventory.getItem(slot);
-            if (stack.isEmpty() || !stack.is(ItemTags.FURNACE_FUELS)) continue;
+            if (stack.isEmpty() || !AbstractFurnaceBlockEntity.isFuel(stack)) continue;
             fuelAdded += insertIntoSlot(inventory, slot, furnace, 1);
             if (fuelAdded > 0) break;
         }
