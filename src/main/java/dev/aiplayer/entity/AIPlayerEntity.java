@@ -253,7 +253,7 @@ public final class AIPlayerEntity extends PathfinderMob {
                         String actionResult = useInventoryItem(serverLevel, itemSlot);
                         AIPlayerMod.LOGGER.info("Blocky item-use result: {}", actionResult);
                         Player taskOwner = findOwner(serverLevel);
-                        if (taskOwner != null) taskOwner.sendSystemMessage(Component.literal("[Blocky] " + actionResult));
+                        if (taskOwner != null) taskOwner.displayClientMessage(Component.literal("[Blocky] " + actionResult), false);
                         pendingUserRequest = "";
                     } else if (decision.contains("ACTION=CRAFT_ITEM")) {
                         brainObjective = "CRAFT_ITEM";
@@ -261,7 +261,7 @@ public final class AIPlayerEntity extends PathfinderMob {
                         String actionResult = dev.aiplayer.BlockyCrafting.craftOne(inventory, serverLevel);
                         AIPlayerMod.LOGGER.info("Blocky crafting result: {}", actionResult);
                         Player taskOwner = findOwner(serverLevel);
-                        if (taskOwner != null) taskOwner.sendSystemMessage(Component.literal("[Blocky] " + actionResult));
+                        if (taskOwner != null) taskOwner.displayClientMessage(Component.literal("[Blocky] " + actionResult), false);
                         pendingUserRequest = "";
                     } else if (decision.contains("ACTION=SERVICE_FURNACE")) {
                         brainObjective = "SERVICE_FURNACE";
@@ -269,7 +269,7 @@ public final class AIPlayerEntity extends PathfinderMob {
                         String actionResult = dev.aiplayer.BlockyBlockInteraction.serviceNearestFurnace(inventory, serverLevel, blockPosition());
                         AIPlayerMod.LOGGER.info("Blocky furnace result: {}", actionResult);
                         Player taskOwner = findOwner(serverLevel);
-                        if (taskOwner != null) taskOwner.sendSystemMessage(Component.literal("[Blocky] " + actionResult));
+                        if (taskOwner != null) taskOwner.displayClientMessage(Component.literal("[Blocky] " + actionResult), false);
                         pendingUserRequest = "";
                     } else if (decision.contains("ACTION=STORE_EXCESS")) {
                         brainObjective = "STORE_EXCESS";
@@ -277,7 +277,7 @@ public final class AIPlayerEntity extends PathfinderMob {
                         String actionResult = dev.aiplayer.BlockyBlockInteraction.storeExcessInNearestContainer(inventory, serverLevel, blockPosition());
                         AIPlayerMod.LOGGER.info("Blocky storage result: {}", actionResult);
                         Player taskOwner = findOwner(serverLevel);
-                        if (taskOwner != null) taskOwner.sendSystemMessage(Component.literal("[Blocky] " + actionResult));
+                        if (taskOwner != null) taskOwner.displayClientMessage(Component.literal("[Blocky] " + actionResult), false);
                         pendingUserRequest = "";
                     } else if (decision.contains("ACTION=GATHER_WOOD")) {
                         brainObjective = "GATHER_WOOD";
