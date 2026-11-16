@@ -1,6 +1,7 @@
 package dev.aiplayer.client;
 
 import dev.aiplayer.AIPlayerConfig;
+import dev.aiplayer.AIPlayerMod;
 import dev.aiplayer.entity.AIPlayerEntity;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.HumanoidModel;
