@@ -7,6 +7,8 @@ import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.CropBlock;
+import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.Comparator;
 
@@ -52,6 +54,28 @@ public final class BlockyBlockInteraction {
             return "Знайшов пічку, але немає готового результату для забирання або палива для завантаження.";
         }
         return "Пічка обслужена: забрав " + taken + " предметів і додав " + fuelAdded + " одиниць палива.";
+    }
+
+    /** Harvests the nearest mature CropBlock without requiring a mod-specific dependency. */
+    public static String harvestNearestCrop(ServerLevel level, BlockPos origin) {
+        int radius = 8;
+        BlockPos target = BlockPos.betweenClosedStream(
+                        origin.offset(-radius, -2, -radius),
+                        origin.offset(radius, 3, radius))
+                .filter(pos -> {
+                    BlockState state = level.getBlockState(pos);
+                    return state.getBlock() instanceof CropBlock crop && crop.isMaxAge(state);
+                })
+                .min(Comparator.comparingDouble(pos -> pos.distToCenterSqr(
+                        origin.getX() + 0.5, origin.getY() + 0.5, origin.getZ() + 0.5)))
+                .map(BlockPos::immutable)
+                .orElse(null);
+
+        if (target == null) return "Поруч не знайшов стиглих культур типу CropBlock.";
+        boolean harvested = level.destroyBlock(target, true);
+        return harvested
+                ? "Зібрав стиглу культуру. Тепер підберу предмети, що випали."
+                : "Не вдалося зібрати культуру.";
     }
 
     /**
