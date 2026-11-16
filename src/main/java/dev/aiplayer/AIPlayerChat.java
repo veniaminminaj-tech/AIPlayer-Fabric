@@ -127,6 +127,11 @@ public final class AIPlayerChat {
                     ? "Зараз тренувальний PvP увімкнений на середній складності."
                     : "Зараз PvP вимкнений. Скажи «Blocky, давай PvP», щоб почати на середній складності.";
         }
+        if (containsAny(normalized, "посади культури", "посади насіння", "засій грядки",
+                "посади пшеницю", "посади моркву", "plant crops", "plant seeds", "sow crops")) {
+            bot.queueUserRequest("Plant compatible crop seeds from your inventory on nearby empty farmland.");
+            return "Добре, знайду вільну грядку та спробую посадити насіння з мого інвентаря.";
+        }
         if (containsAny(normalized, "збери врожай", "збери урожай", "збери культури",
                 "збери пшеницю", "збери моркву", "збери картоплю", "harvest crops", "farm crops")) {
             bot.queueUserRequest("Harvest nearby mature crops and collect the drops.");
