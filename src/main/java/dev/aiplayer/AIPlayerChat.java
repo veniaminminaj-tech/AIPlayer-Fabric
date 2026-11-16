@@ -89,7 +89,7 @@ public final class AIPlayerChat {
                 for (String line : history) conversation.append(line).append('\n');
                 conversation.append(playerName).append(": ").append(promptText);
                 prompt = conversation.toString();
-                history.addLast(playerName + ": " + promptText);
+                appendHistory(history, playerName + ": " + promptText, config.memoryMessages);
             }
 
             MinecraftServer server = sender.level().getServer();
@@ -101,7 +101,7 @@ public final class AIPlayerChat {
                 }
                 String safeReply = reply == null ? "I don't have a response right now." : reply.trim();
                 synchronized (history) {
-                    history.addLast(trigger + ": " + safeReply);
+                    appendHistory(history, trigger + ": " + safeReply, config.memoryMessages);
                 }
                 sender.sendSystemMessage(Component.literal("[" + trigger + "] " + safeReply));
             }));
@@ -159,6 +159,19 @@ public final class AIPlayerChat {
             return items.isEmpty() ? "Мій інвентар поки порожній." : "У моєму інвентарі: " + items + ".";
         }
         return null;
+    }
+
+    /** Keeps only the configured number of recent conversation messages. */
+    private static void appendHistory(Deque<String> history, String message, int maxMessages) {
+        int limit = Math.max(0, Math.min(20, maxMessages));
+        if (limit == 0) {
+            history.clear();
+            return;
+        }
+        history.addLast(message);
+        while (history.size() > limit) {
+            history.removeFirst();
+        }
     }
 
     private static boolean containsAny(String text, String... phrases) {
