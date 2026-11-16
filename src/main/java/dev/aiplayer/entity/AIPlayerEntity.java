@@ -284,7 +284,7 @@ public final class AIPlayerEntity extends PathfinderMob {
                     } else if (decision.contains("ACTION=FARM_CROPS")) {
                         brainObjective = "FARM_CROPS";
                         gatherMode = false;
-                        String actionResult = dev.aiplayer.BlockyFarming.harvestNearestCrop(serverLevel, blockPosition());
+                        String actionResult = dev.aiplayer.BlockyBlockInteraction.harvestNearestCrop(serverLevel, blockPosition());
                         AIPlayerMod.LOGGER.info("Blocky farming result: {}", actionResult);
                         Player taskOwner = findOwner(serverLevel);
                         if (taskOwner != null) taskOwner.displayClientMessage(Component.literal("[Blocky] " + actionResult), false);
