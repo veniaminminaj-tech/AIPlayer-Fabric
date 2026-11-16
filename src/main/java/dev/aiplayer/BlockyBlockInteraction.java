@@ -42,7 +42,7 @@ public final class BlockyBlockInteraction {
         // Input items are deliberately left untouched until recipe-aware smelting is added.
         for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
             ItemStack stack = inventory.getItem(slot);
-            if (stack.isEmpty() || !AbstractFurnaceBlockEntity.canUseAsFuel(stack)) continue;
+            if (stack.isEmpty() || !level.fuelValues().isFuel(stack)) continue;
             fuelAdded += insertIntoSlot(inventory, slot, furnace, 1);
             if (fuelAdded > 0) break;
         }
