@@ -88,13 +88,18 @@ public final class AIPlayerConfig {
         try {
             Files.createDirectories(PLAYER_FOLDER);
             if (Files.notExists(API_KEY_FILE)) Files.writeString(API_KEY_FILE, "");
+            // Install the user's supplied Blocky texture only when no custom skin exists.
+            if (Files.notExists(SKIN_FILE)) {
+                Files.write(SKIN_FILE, DefaultBlockySkin.pngBytes());
+                AIPlayerMod.LOGGER.info("Installed default Blocky skin at {}", SKIN_FILE);
+            }
             if (Files.notExists(README_FILE)) {
                 Files.writeString(README_FILE, """
                         AI Player files
 
                         1. Paste your provider API key into api-key.txt and save the file.
-                        2. Put your Minecraft player skin PNG at skin.png (64x64 pixels).
-                        3. Restart Minecraft after changing skin.png.
+                        2. The supplied Blocky skin is installed as skin.png automatically.
+                        3. Replace skin.png with your own 64x64 PNG to use a custom skin.
                         4. Keep api-key.txt private; do not share it or upload it to GitHub.
                         """);
             }
