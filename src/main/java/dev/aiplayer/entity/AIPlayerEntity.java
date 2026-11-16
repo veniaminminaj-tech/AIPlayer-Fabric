@@ -209,6 +209,7 @@ public final class AIPlayerEntity extends PathfinderMob {
                 Analyze the owner's request, the current world, health, inventory, nearby resources and nearby blocks.
                 Choose exactly ONE action token on the first line, with no explanation:
                 ACTION=GATHER_WOOD
+                ACTION=FARM_CROPS
                 ACTION=CRAFT_ITEM
                 ACTION=SERVICE_FURNACE
                 ACTION=STORE_EXCESS
@@ -229,6 +230,7 @@ public final class AIPlayerEntity extends PathfinderMob {
                 - If the owner asks to use, load, or collect from a furnace, choose SERVICE_FURNACE.
                 - If the owner asks to store surplus items in a chest, barrel, or compatible modded container, choose STORE_EXCESS.
                 - If the owner asks to activate or use a specific inventory item, choose USE_ITEM and include SLOT=n for the matching inventory slot (0 through 26), using the item registry ID shown in the inventory.
+                - Choose FARM_CROPS when the owner asks to harvest or farm nearby mature crops.
                 - Choose GATHER_WOOD only when logs exist and inventory has room.
                 - Choose FOLLOW_OWNER if the owner is far away or danger is nearby.
                 - Otherwise choose REST.
@@ -276,6 +278,14 @@ public final class AIPlayerEntity extends PathfinderMob {
                         gatherMode = false;
                         String actionResult = dev.aiplayer.BlockyBlockInteraction.storeExcessInNearestContainer(inventory, serverLevel, blockPosition());
                         AIPlayerMod.LOGGER.info("Blocky storage result: {}", actionResult);
+                        Player taskOwner = findOwner(serverLevel);
+                        if (taskOwner != null) taskOwner.displayClientMessage(Component.literal("[Blocky] " + actionResult), false);
+                        pendingUserRequest = "";
+                    } else if (decision.contains("ACTION=FARM_CROPS")) {
+                        brainObjective = "FARM_CROPS";
+                        gatherMode = false;
+                        String actionResult = dev.aiplayer.BlockyFarming.harvestNearestCrop(serverLevel, blockPosition());
+                        AIPlayerMod.LOGGER.info("Blocky farming result: {}", actionResult);
                         Player taskOwner = findOwner(serverLevel);
                         if (taskOwner != null) taskOwner.displayClientMessage(Component.literal("[Blocky] " + actionResult), false);
                         pendingUserRequest = "";
