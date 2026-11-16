@@ -127,6 +127,11 @@ public final class AIPlayerChat {
                     ? "Зараз тренувальний PvP увімкнений на середній складності."
                     : "Зараз PvP вимкнений. Скажи «Blocky, давай PvP», щоб почати на середній складності.";
         }
+        if (containsAny(normalized, "збери врожай", "збери урожай", "збери культури",
+                "збери пшеницю", "збери моркву", "збери картоплю", "harvest crops", "farm crops")) {
+            bot.queueUserRequest("Harvest nearby mature crops and collect the drops.");
+            return "Добре, перевірю поруч стиглі культури та зберу врожай.";
+        }
         if (containsAny(normalized, "добудь дерево", "збирай деревину", "рубaй дерево",
                 "chop wood", "gather wood", "collect logs", "добывай дерево", "собирай древесину")) {
             if (!bot.isGatherMode()) bot.toggleGatherMode();
