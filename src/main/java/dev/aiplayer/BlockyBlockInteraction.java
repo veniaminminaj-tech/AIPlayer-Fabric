@@ -7,6 +7,8 @@ import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.state.BlockState;
 
@@ -76,6 +78,49 @@ public final class BlockyBlockInteraction {
         return harvested
                 ? "Зібрав стиглу культуру. Тепер підберу предмети, що випали."
                 : "Не вдалося зібрати культуру.";
+    }
+
+    /** Plants the nearest compatible CropBlock seed on empty farmland. */
+    public static String plantNearestCrop(SimpleContainer inventory, ServerLevel level, BlockPos origin) {
+        ItemStack seedStack = ItemStack.EMPTY;
+        CropBlock cropBlock = null;
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+            ItemStack candidate = inventory.getItem(slot);
+            if (candidate.isEmpty() || !(candidate.getItem() instanceof BlockItem blockItem)
+                    || !(blockItem.getBlock() instanceof CropBlock crop)) continue;
+            seedStack = candidate;
+            cropBlock = crop;
+            break;
+        }
+
+        if (seedStack.isEmpty() || cropBlock == null) {
+            return "У моєму інвентарі немає сумісного насіння CropBlock.";
+        }
+
+        int radius = 8;
+        BlockPos target = BlockPos.betweenClosedStream(
+                        origin.offset(-radius, -2, -radius),
+                        origin.offset(radius, 2, radius))
+                .filter(pos -> level.getBlockState(pos).is(Blocks.FARMLAND)
+                        && level.isEmptyBlock(pos.above()))
+                .map(BlockPos::immutable)
+                .min(Comparator.comparingDouble(pos -> pos.distToCenterSqr(
+                        origin.getX() + 0.5, origin.getY() + 0.5, origin.getZ() + 0.5)))
+                .orElse(null);
+
+        if (target == null) return "Поруч не знайшов вільної зволоженої або звичайної грядки.";
+        BlockPos plantPos = target.above();
+        BlockState plantedState = cropBlock.getStateForAge(0);
+        if (!plantedState.canSurvive(level, plantPos)) {
+            return "Це насіння не може рости на знайденій грядці.";
+        }
+        if (!level.setBlock(plantPos, plantedState, 3)) {
+            return "Не вдалося посадити культуру.";
+        }
+
+        seedStack.shrink(1);
+        inventory.setChanged();
+        return "Посадив " + seedStack.getHoverName().getString() + " на найближчій вільній грядці.";
     }
 
     /**
