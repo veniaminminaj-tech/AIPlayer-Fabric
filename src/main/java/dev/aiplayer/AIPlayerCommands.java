@@ -9,6 +9,7 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.phys.Vec3;
 
@@ -40,6 +41,9 @@ public final class AIPlayerCommands {
         String safeName = name == null || name.isBlank() ? "Blocky" : name.substring(0, Math.min(32, name.length()));
         bot.setCustomName(Component.literal(safeName));
         bot.setCustomNameVisible(true);
+        if (source.getEntity() instanceof ServerPlayer owner) {
+            bot.addTag(AIPlayerEntity.ownerTag(owner.getUUID()));
+        }
         bot.setPos(pos.x, pos.y, pos.z);
         bot.setYRot(source.getRotation().y);
         bot.setXRot(0.0F);

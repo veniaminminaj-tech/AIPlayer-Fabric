@@ -65,8 +65,6 @@ public final class AIPlayerChat {
             }
 
             // All non-basic requests enter the strategic planner as natural language.
-            bot.queueUserRequest(promptText);
-
             long now = System.currentTimeMillis();
             Long previous = LAST_REQUEST.put(sender.getUUID(), now);
             if (previous != null && now - previous < COOLDOWN_MS) {
@@ -75,6 +73,7 @@ public final class AIPlayerChat {
                 return;
             }
 
+            bot.queueUserRequest(promptText);
             String playerName = sender.getName().getString();
             String playerContext = "Player: " + playerName
                     + ". Dimension: " + sender.level().dimension().identifier()
