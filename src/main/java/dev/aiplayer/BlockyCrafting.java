@@ -39,11 +39,10 @@ public final class BlockyCrafting {
         }
         for (int slot = 0; slot < 9; slot++) {
             ItemStack ingredient = preview.getItem(slot);
-            if (ingredient.isEmpty()) continue;
-
-            // Only occupied crafting-grid slots are recipe inputs; leave empty slots untouched.
-            ingredient.shrink(1);
-            if (ingredient.isEmpty()) preview.setItem(slot, ItemStack.EMPTY);
+            if (!ingredient.isEmpty()) {
+                ingredient.shrink(1);
+                if (ingredient.isEmpty()) preview.setItem(slot, ItemStack.EMPTY);
+            }
         }
         ItemStack overflow = preview.addItem(result.copy());
         if (!overflow.isEmpty()) return "Немає місця для результату. Звільни інвентар і повтори.";
