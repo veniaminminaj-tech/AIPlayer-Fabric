@@ -29,21 +29,39 @@ public final class BlockyCrafting {
             return "Не знайшов рецепта у перших 9 слотах. Розклади інгредієнти як у рецепті й повтори.";
         }
 
-        ItemStack result = match.get().value().assemble(input, level.registryAccess());
+        CraftingRecipe recipe = match.get().value();
+        ItemStack result = recipe.assemble(input, level.registryAccess());
         if (result.isEmpty()) return "Рецепт знайдено, але він не створив предмет.";
 
-        // Simulate first, so a full inventory never consumes ingredients.
+        // Simulate the whole craft first, including recipe-specific remainders.
+        // This prevents losing buckets, bottles, or other returned items.
+        List<ItemStack> remainders = recipe.getRemainingItems(input);
         SimpleContainer preview = new SimpleContainer(inventory.getContainerSize());
         for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
             preview.setItem(slot, inventory.getItem(slot).copy());
         }
+
         for (int slot = 0; slot < 9; slot++) {
             ItemStack ingredient = preview.getItem(slot);
             if (!ingredient.isEmpty()) {
                 ingredient.shrink(1);
                 if (ingredient.isEmpty()) preview.setItem(slot, ItemStack.EMPTY);
             }
+
+            ItemStack remainder = remainders.get(slot);
+            if (!remainder.isEmpty()) {
+                ItemStack remainderCopy = remainder.copy();
+                if (preview.getItem(slot).isEmpty()) {
+                    preview.setItem(slot, remainderCopy);
+                } else {
+                    ItemStack overflow = preview.addItem(remainderCopy);
+                    if (!overflow.isEmpty()) {
+                        return "Немає місця для предметів, що залишаються після рецепта. Звільни інвентар і повтори.";
+                    }
+                }
+            }
         }
+
         ItemStack overflow = preview.addItem(result.copy());
         if (!overflow.isEmpty()) return "Немає місця для результату. Звільни інвентар і повтори.";
 
