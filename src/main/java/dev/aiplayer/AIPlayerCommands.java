@@ -9,6 +9,7 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.phys.Vec3;
 
@@ -21,24 +22,12 @@ public final class AIPlayerCommands {
     }
 
     private static void registerCommands(CommandDispatcher<CommandSourceStack> dispatcher) {
-        dispatcher.register(Commands.literal("spawnai")
+        dispatcher.register(Commands.literal("aiplayerspawn")
                 .requires(Commands.hasPermission(Commands.LEVEL_ADMINS))
                 .executes(context -> spawn(context.getSource(), AIPlayerConfig.get().botName))
                 .then(Commands.argument("name", StringArgumentType.word())
                         .executes(context -> spawn(context.getSource(),
                                 StringArgumentType.getString(context, "name")))));
-        dispatcher.register(Commands.literal("aiclear")
-                .executes(context -> {
-                    var source = context.getSource();
-                    var player = source.getPlayer();
-                    if (player == null) {
-                        source.sendFailure(Component.literal("This command can only be used by a player."));
-                        return 0;
-                    }
-                    AIPlayerChat.clearMemory(player.getUUID());
-                    source.sendSuccess(() -> Component.literal("Your AI companion conversation memory was cleared."), false);
-                    return 1;
-                }));
     }
 
     private static int spawn(CommandSourceStack source, String name) {
@@ -49,9 +38,12 @@ public final class AIPlayerCommands {
             source.sendFailure(Component.literal("Could not create AI player."));
             return 0;
         }
-        String safeName = name == null || name.isBlank() ? "AI Player" : name.substring(0, Math.min(32, name.length()));
+        String safeName = name == null || name.isBlank() ? "Blocky" : name.substring(0, Math.min(32, name.length()));
         bot.setCustomName(Component.literal(safeName));
         bot.setCustomNameVisible(true);
+        if (source.getEntity() instanceof ServerPlayer owner) {
+            bot.addTag(AIPlayerEntity.ownerTag(owner.getUUID()));
+        }
         bot.setPos(pos.x, pos.y, pos.z);
         bot.setYRot(source.getRotation().y);
         bot.setXRot(0.0F);

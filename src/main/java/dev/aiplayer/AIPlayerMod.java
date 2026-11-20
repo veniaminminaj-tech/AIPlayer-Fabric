@@ -2,6 +2,7 @@ package dev.aiplayer;
 
 import dev.aiplayer.entity.AIPlayerEntities;
 import dev.aiplayer.entity.AIPlayerEntity;
+import dev.aiplayer.network.BlockyNetworking;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.object.builder.v1.entity.FabricDefaultAttributeRegistry;
 import org.slf4j.Logger;
@@ -14,10 +15,11 @@ public final class AIPlayerMod implements ModInitializer {
     @Override
     public void onInitialize() {
         AIPlayerConfig.load();
+        BlockyNetworking.register();
         FabricDefaultAttributeRegistry.register(AIPlayerEntities.AI_PLAYER, AIPlayerEntity.createAttributes());
         AIPlayerCommands.register();
         AIPlayerAutoSpawn.register();
         AIPlayerChat.register();
-        LOGGER.info("AIPlayer initialized. Companions spawn automatically in every game mode; press M for settings.");
+        LOGGER.info("Blocky initialized. Player-like AI companion systems are loading; press M for settings.");
     }
 }

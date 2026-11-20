@@ -21,7 +21,7 @@ public final class AIPlayerConfig {
     public transient String apiKey = "";
     public String endpoint = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
     public String skin = "steve";
-    public String botName = "AI Player";
+    public String botName = "Blocky";
     public String personality = "Friendly, curious, helpful, and knowledgeable about Minecraft.";
     public int memoryMessages = 8;
 
@@ -44,7 +44,7 @@ public final class AIPlayerConfig {
                     if (loaded.endpoint == null || loaded.endpoint.contains("localhost")) loaded.endpoint = defaultEndpoint(loaded.provider);
                     loaded.apiKey = readApiKey();
                     if (loaded.skin == null) loaded.skin = "steve";
-                    if (loaded.botName == null || loaded.botName.isBlank()) loaded.botName = "AI Player";
+                    if (loaded.botName == null || loaded.botName.isBlank() || loaded.botName.equalsIgnoreCase("AI Player")) loaded.botName = "Blocky";
                     if (loaded.personality == null || loaded.personality.isBlank())
                         loaded.personality = "Friendly, curious, helpful, and knowledgeable about Minecraft.";
                     loaded.memoryMessages = Math.max(0, Math.min(20, loaded.memoryMessages));
@@ -54,6 +54,15 @@ public final class AIPlayerConfig {
         } catch (Exception e) {
             AIPlayerMod.LOGGER.error("Could not read config/aiplayer.json; using defaults.", e);
             INSTANCE = new AIPlayerConfig();
+        }
+        if (Files.notExists(FILE)) {
+            try {
+                Files.createDirectories(FILE.getParent());
+                Files.writeString(FILE, GSON.toJson(INSTANCE));
+                AIPlayerMod.LOGGER.info("Created default config at {}", FILE);
+            } catch (IOException e) {
+                AIPlayerMod.LOGGER.error("Could not create default config/aiplayer.json.", e);
+            }
         }
         INSTANCE.apiKey = readApiKey();
     }
@@ -79,13 +88,18 @@ public final class AIPlayerConfig {
         try {
             Files.createDirectories(PLAYER_FOLDER);
             if (Files.notExists(API_KEY_FILE)) Files.writeString(API_KEY_FILE, "");
+            // Install the user's supplied Blocky texture only when no custom skin exists.
+            if (Files.notExists(SKIN_FILE)) {
+                Files.write(SKIN_FILE, DefaultBlockySkin.pngBytes());
+                AIPlayerMod.LOGGER.info("Installed default Blocky skin at {}", SKIN_FILE);
+            }
             if (Files.notExists(README_FILE)) {
                 Files.writeString(README_FILE, """
                         AI Player files
 
                         1. Paste your provider API key into api-key.txt and save the file.
-                        2. Put your Minecraft player skin PNG at skin.png (64x64 pixels).
-                        3. Restart Minecraft after changing skin.png.
+                        2. The supplied Blocky skin is installed as skin.png automatically.
+                        3. Replace skin.png with your own 64x64 PNG to use a custom skin.
                         4. Keep api-key.txt private; do not share it or upload it to GitHub.
                         """);
             }
